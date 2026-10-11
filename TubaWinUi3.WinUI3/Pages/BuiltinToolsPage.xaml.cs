@@ -498,7 +498,7 @@ public sealed class BuiltinToolViewModel : INotifyPropertyChanged
     public string Description => Tool.Description;
 
     /// <summary>有彩色矢量图标时为 null，卡片改用 <see cref="IconSource"/>（字形作为回退保留）。</summary>
-    public string? Glyph => IconSource is null ? Tool.Glyph : null;
+    public string? Glyph => Tool.Glyph;
 
     private ImageSource? _iconSource;
     private bool _iconSourceResolved;

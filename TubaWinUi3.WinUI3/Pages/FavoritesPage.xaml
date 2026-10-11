@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:l="using:WinUI3Localizer"
     xmlns:local="using:TubaWinUi3.Pages"
+    xmlns:controls="using:TubaWinUi3.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     NavigationCacheMode="Enabled"
     mc:Ignorable="d">
@@ -219,24 +220,7 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <Border Style="{StaticResource IconTileStyle}" Width="56" Height="56">
-                                        <Grid>
-                                            <Image
-                                                Width="40"
-                                                Height="40"
-                                                Source="{Binding IconPath}"
-                                                Stretch="Uniform"
-                                                Visibility="{Binding IconPath, Converter={StaticResource NullToCollapse}}" />
-                                            <Image
-                                                Width="40"
-                                                Height="40"
-                                                Source="{Binding IconSource}"
-                                                Stretch="Uniform"
-                                                Visibility="{Binding IconSource, Converter={StaticResource NullToCollapse}}" />
-                                            <FontIcon
-                                                FontSize="28"
-                                                Glyph="{Binding IconGlyph}"
-                                                Visibility="{Binding IconGlyph, Converter={StaticResource NullToCollapse}}" />
-                                        </Grid>
+                                        <controls:ToolIconPresenter Width="40" Height="40" GlyphSize="28" Glyph="{Binding IconGlyph}" IconSource="{Binding IconSource}" IconPath="{Binding IconPath}" />
                                     </Border>
                                     <StackPanel Grid.Column="1" Spacing="3">
                                         <TextBlock

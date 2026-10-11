@@ -36,6 +36,8 @@ public sealed class ToolItem : INotifyPropertyChanged
     /// <summary>卡片上的分类显示名（本地化；Category 本身是物理分类名/数据键，不可翻译）。</summary>
     public string CategoryDisplay => LocalizationService.GetCategoryDisplayName(Category);
 
+    public string OperationHint => ToolOperationHints.For(Name, Category, BuiltinToolId);
+
     public string CategoriesDisplay => _categories.Count <= 1
         ? ""
         : string.Join(" · ", _categories.Where(c => c != Category).Select(LocalizationService.GetCategoryDisplayName));

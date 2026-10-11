@@ -24,6 +24,13 @@ public static class GameMonitorBackendService
     /// <summary>功能是否已开启（设置项）。</summary>
     public static bool IsEnabled => AppSettings.GetBool(EnabledSettingKey, false);
 
+    /// <summary>Opening the toolbox never implicitly starts a performance overlay.</summary>
+    public static void ResetOnManualLaunch()
+    {
+        if (IsEnabled) AppSettings.Set(EnabledSettingKey, false);
+        GameOverlayAutoService.Instance.Stop();
+    }
+
     /// <summary>首次询问弹窗是否已经展示过。</summary>
     public static bool HasPrompted => AppSettings.Get(PromptedSettingKey) is not null;
 
@@ -41,6 +48,8 @@ public static class GameMonitorBackendService
         if (!IsSupported) return;
 
         AppSettings.Set(EnabledSettingKey, enabled);
+        if (enabled) GameOverlayAutoService.Instance.Start();
+        else GameOverlayAutoService.Instance.Stop();
         // 后端是单实例进程：任意一边开关变化都走统一同步逻辑，
         // 由 ActiveInterceptService 决定 启动/重启/停止。
         ActiveInterceptService.SyncBackend();

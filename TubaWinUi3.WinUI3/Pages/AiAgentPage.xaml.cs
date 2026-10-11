@@ -63,6 +63,13 @@ public sealed partial class AiAgentPage : UserControl
     {
     }
 
+    internal void PrepareDiagnosticContext(string summary)
+    {
+        ResetToNewChat();
+        InputBox.Text = "请分析下面的本机检测记录。区分采集到的事实、可能原因和仍需验证的项目，先给出下一步检查，不要自动修改系统。\n\n" + summary;
+        InputBox.Focus(FocusState.Programmatic);
+    }
+
     internal AiAgentPage(bool compact)
     {
         InitializeComponent();

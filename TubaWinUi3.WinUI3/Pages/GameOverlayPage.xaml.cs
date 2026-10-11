@@ -187,8 +187,7 @@ public sealed partial class GameOverlayPage : Page
         LoadConfig();
         ScanGameWindows();
 
-        // 首次打开游戏监控工具：弹窗询问是否开启后台自动监控（仅询问一次）
-        _ = ShowBackendMonitorPromptAsync();
+        // 浏览页面不弹开启邀请；只有用户操作开关或启动按钮才启用监控。
     }
 
     // ================= 后台自动监控（与流氓软件拦截共用后端进程） =================

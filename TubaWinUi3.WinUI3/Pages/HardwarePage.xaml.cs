@@ -146,6 +146,14 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
         _ = LoadHardwareInfoAsync(forceRefresh: true);
     }
 
+    private async void AnalyzeHardware_Click(object sender, RoutedEventArgs e)
+    {
+        if (_currentSections is null) return;
+        var summary = "本机硬件摘要（" + HardwareSourceText.Text + "）\n" + string.Join("\n", _currentSections.SelectMany(s => s.Items).Select(i => $"{i.Label}：{i.Value}"));
+        try { await AiAssistantTool.OpenWithContextAsync(summary, XamlRoot); }
+        catch (Exception ex) { ShowStatusBar("AI 对话未打开", ex.Message, InfoBarSeverity.Error); }
+    }
+
     private void DetailButton_Click(object sender, RoutedEventArgs e)
     {
         Frame.Navigate(typeof(HardwareDetailPage), null, new SlideNavigationTransitionInfo() { Effect = SlideNavigationTransitionEffect.FromRight });
@@ -334,6 +342,7 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
             }
 
             ApplySections(sections);
+            HardwareSourceText.Text = $"数据来源：{(useCpuz && CpuzInfoService.CachedInfo is not null ? "WMI / DXGI，CPU-Z 补充" : "WMI / DXGI")} · 系统查询时间：{HardwareInfoService.LastCapturedAt:f}。共享显存为上限，内存设备数不代表可更换插槽。";
             StatusBar.IsOpen = false;
         }
         catch (Exception ex)

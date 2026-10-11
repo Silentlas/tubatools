@@ -264,6 +264,8 @@ public static class HardwareInfoService
         return Task.Run(() => BuildSections(forceRefresh));
     }
 
+    public static DateTimeOffset? LastCapturedAt { get; private set; }
+
     private static IReadOnlyList<HardwareInfoSection> BuildSections(bool forceRefresh)
     {
         lock (_lock)
@@ -294,6 +296,7 @@ public static class HardwareInfoService
             lock (_lock)
             {
                 _cache = sections;
+                LastCapturedAt = DateTimeOffset.Now;
             }
 
             return sections;
@@ -676,9 +679,7 @@ public static class HardwareInfoService
         foreach (var item in Query("Win32_VideoController"))
         {
             var name = Get(item, "Name");
-            if (ContainsAny(name, "Microsoft Basic Render", "Microsoft Remote Display", "DDA Wrapper",
-                "Idd Desk", "GameViewer Virtual Display", "Honor Virtual Display", "Virtual Display",
-                "Virtual GPU", "Virtual Adapter", "虚拟", "Remote Display Adapter"))
+            if (HardwareDisplayPolicy.IsVirtualAdapter(name))
                 continue;
 
             var display = name;
@@ -687,10 +688,7 @@ public static class HardwareInfoService
             {
                 var dedicated = dxgiAdapters[dxgiIdx].dedicatedVram;
                 var shared = dxgiAdapters[dxgiIdx].sharedVram;
-                if (dedicated > 0)
-                    display += $" ({dedicated / 1024d / 1024d / 1024d:0.#} GB)";
-                else if (shared > 0)
-                    display += $" (共享 {shared / 1024d / 1024d / 1024d:0.#} GB)";
+                display += $" ({HardwareDisplayPolicy.FormatGpuMemory(dedicated, shared)})";
             }
 
             parts.Add(display!);
@@ -796,7 +794,7 @@ public static class HardwareInfoService
         if (!string.IsNullOrWhiteSpace(manufacturer)) parts.Add(manufacturer);
         parts.Add($"{totalBytes / 1024d / 1024d / 1024d:0.#}GB");
         if (speedLabel.Length > 0) parts.Add(speedLabel);
-        parts.Add($"({modules.Count}/{totalSlots} 插槽)");
+        parts.Add(HardwareDisplayPolicy.FormatMemoryDevices(modules.Count, totalSlots, memType));
 
         return string.Join(" ", parts);
     }
@@ -2066,9 +2064,7 @@ public static class HardwareInfoService
         foreach (var item in Query("Win32_VideoController"))
         {
             var name = Get(item, "Name");
-            if (ContainsAny(name, "Microsoft Basic Render", "Microsoft Remote Display", "DDA Wrapper",
-                "Idd Desk", "IddDesk", "IddCx", "GameViewer Virtual Display", "Honor Virtual Display", "Virtual Display",
-                "Virtual GPU", "Virtual Adapter", "虚拟", "Remote Display Adapter"))
+            if (HardwareDisplayPolicy.IsVirtualAdapter(name))
                 continue;
 
             var width = Get(item, "CurrentHorizontalResolution");
@@ -2078,17 +2074,9 @@ public static class HardwareInfoService
             string? vramText = null;
             if (name != null && TryMatchDxgiAdapter(name, dxgiAdapters, out int dxgiIdx))
             {
-                const double oneGb = 1024d * 1024d * 1024d;
                 var dedicated = dxgiAdapters[dxgiIdx].dedicatedVram;
                 var shared = dxgiAdapters[dxgiIdx].sharedVram;
-
-                // 核显的「专用显存」只是截出来的一小块（常见 128 MB），显示共享内存才符合实际可用显存
-                if (dedicated >= oneGb)
-                    vramText = $"{dedicated / oneGb:0.#} GB";
-                else if (shared > 0)
-                    vramText = $"共享 {shared / oneGb:0.#} GB";
-                else if (dedicated > 0)
-                    vramText = $"{dedicated / oneGb:0.#} GB";
+                vramText = HardwareDisplayPolicy.FormatGpuMemory(dedicated, shared);
                 usedDxgiIndices.Add(dxgiIdx);
             }
 

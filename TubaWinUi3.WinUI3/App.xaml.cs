@@ -446,8 +446,12 @@ public partial class App : Application
             _window.DispatcherQueue.TryEnqueue(() => OpenPhoneLinkActivation(null));
         // 首次连接授权：配对成功但是本机未批准过的设备时，弹窗请用户确认。
         PhoneLinkService.PairApprovalHandler = RequestPairApprovalAsync;
-        // 游戏后台自动覆盖层：常驻轮询后端信号文件（检测到全屏游戏自动显示悬浮窗）
-        Services.GameOverlayAutoService.Instance.Start();
+        // 普通启动只打开工具箱，不继承上次的游戏自动监控状态。
+        // 后端专用启动只响应用户已手动开启的后台监控。
+        if (intent.Kind == LaunchIntentKind.GameOverlayAuto && GameMonitorBackendService.IsEnabled)
+            Services.GameOverlayAutoService.Instance.Start();
+        else
+            GameMonitorBackendService.ResetOnManualLaunch();
 
         // 环境变量页要靠窗口子类化才能收到外部程序的 WM_SETTINGCHANGE；
         // 装不上只是少个提示，绝不能因此让启动失败。

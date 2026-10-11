@@ -92,6 +92,7 @@ public sealed partial class HomePage : Page, ILocalizablePage
 
     private void ApplyCompactMode()
     {
+        if (ViewModeBox is not null) ViewModeBox.SelectedIndex = _compactMode ? 1 : 0;
         if (_compactMode)
         {
             ToolsGrid.Visibility = Visibility.Collapsed;
@@ -109,6 +110,24 @@ public sealed partial class HomePage : Page, ILocalizablePage
     private void UpdateItemWidth()
     {
         ToolCardLayout.Apply(_compactMode ? CompactGrid : ToolsGrid, _compactMode);
+    }
+
+    private void ViewModeBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ViewModeBox.SelectedIndex < 0) return;
+        var compact = ViewModeBox.SelectedIndex == 1;
+        if (compact != CompactModeService.IsCompactModeEnabled()) CompactModeService.SetCompactModeEnabled(compact);
+    }
+
+    private void ToolMoreButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: ToolItem tool } anchor) return;
+        var flyout = (MenuFlyout)ToolsGrid.Resources["NormalItemFlyout"];
+        foreach (var item in flyout.Items) item.DataContext = tool;
+        PopulateArchSubmenu(flyout, tool);
+        UpdateBuiltinLinkFlyoutItems(flyout, tool, "NormalMenu");
+        UpdateFavoriteMenuItem(flyout, tool, "NormalMenuToggleFavorite");
+        flyout.ShowAt(anchor);
     }
 
     private void ToolsGrid_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -594,55 +613,14 @@ public sealed partial class HomePage : Page, ILocalizablePage
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center
         };
-        var image = new Image
-        {
-            Width = 28,
-            Height = 28,
-            Stretch = Stretch.Uniform
-        };
-        image.SetBinding(Image.SourceProperty, new Microsoft.UI.Xaml.Data.Binding
-        {
-            Path = new PropertyPath(nameof(ToolItem.IconPath)),
-            Source = tool,
-            Mode = Microsoft.UI.Xaml.Data.BindingMode.OneWay
-        });
-        image.SetBinding(Image.VisibilityProperty, new Microsoft.UI.Xaml.Data.Binding
-        {
-            Path = new PropertyPath(nameof(ToolItem.IconPath)),
-            Source = tool,
-            Mode = Microsoft.UI.Xaml.Data.BindingMode.OneWay,
-            Converter = (Microsoft.UI.Xaml.Data.IValueConverter)Resources["NullToCollapse"]
-        });
-        var fontIcon = new FontIcon
-        {
-            FontSize = 20,
-            HorizontalAlignment = HorizontalAlignment.Center,
-            VerticalAlignment = VerticalAlignment.Center,
-            Glyph = tool.IconGlyph ?? "",
-            Visibility = tool.IconGlyph is not null ? Visibility.Visible : Visibility.Collapsed
-        };
-        var colorIcon = new Image
-        {
-            Width = 28,
-            Height = 28,
-            Stretch = Stretch.Uniform
-        };
-        colorIcon.SetBinding(Image.SourceProperty, new Microsoft.UI.Xaml.Data.Binding
-        {
-            Path = new PropertyPath(nameof(ToolItem.IconSource)),
-            Source = tool,
-            Mode = Microsoft.UI.Xaml.Data.BindingMode.OneWay
-        });
-        colorIcon.SetBinding(Image.VisibilityProperty, new Microsoft.UI.Xaml.Data.Binding
-        {
-            Path = new PropertyPath(nameof(ToolItem.IconSource)),
-            Source = tool,
-            Mode = Microsoft.UI.Xaml.Data.BindingMode.OneWay,
-            Converter = (Microsoft.UI.Xaml.Data.IValueConverter)Resources["NullToCollapse"]
-        });
-        iconGrid.Children.Add(image);
-        iconGrid.Children.Add(colorIcon);
-        iconGrid.Children.Add(fontIcon);
+        var presenter = new TubaWinUi3.Controls.ToolIconPresenter { Width = 28, Height = 28, GlyphSize = 20 };
+        foreach (var (property, name) in new[] {
+            (TubaWinUi3.Controls.ToolIconPresenter.IconPathProperty, nameof(ToolItem.IconPath)),
+            (TubaWinUi3.Controls.ToolIconPresenter.IconSourceProperty, nameof(ToolItem.IconSource)),
+            (TubaWinUi3.Controls.ToolIconPresenter.GlyphProperty, nameof(ToolItem.IconGlyph)) })
+            presenter.SetBinding(property, new Microsoft.UI.Xaml.Data.Binding {
+                Path = new PropertyPath(name), Source = tool, Mode = Microsoft.UI.Xaml.Data.BindingMode.OneWay });
+        iconGrid.Children.Add(presenter);
         Grid.SetColumn(iconGrid, 1);
         grid.Children.Add(iconGrid);
 

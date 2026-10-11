@@ -235,7 +235,7 @@ public sealed class GameOverlayAutoService
         Pages.GameOverlayWindow.CloseOverlay();
         _autoManaged = false;
         _lastHwnd = 0;
-        FinishAutoRecord(openViewer: true); // 游戏退出 → 落盘并自动打开记录查看窗口
+        FinishAutoRecord(openViewer: false); // 保存记录即可，不主动弹出查看窗口。
         Log("悬浮窗已自动关闭");
     }
 
@@ -244,7 +244,7 @@ public sealed class GameOverlayAutoService
     /// <summary>检测到游戏、悬浮窗显示时启动记录会话。指标/格式沿用页面保存的设置（未配置 = 全指标 + 默认格式）。</summary>
     private void StartAutoRecord(string process)
     {
-        if (AppSettings.Get(AutoRecordSetting) == "false")
+        if (!AppSettings.GetBool(AutoRecordSetting, false))
         {
             Log("自动记录已关闭（GameOverlay_AutoRecord=false），跳过");
             return;

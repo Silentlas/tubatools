@@ -6,6 +6,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:l="using:WinUI3Localizer"
     xmlns:local="using:TubaWinUi3.Pages"
+    xmlns:controls="using:TubaWinUi3.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     NavigationCacheMode="Enabled"
     mc:Ignorable="d">
@@ -71,20 +72,7 @@
                             Height="56"
                             Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                             CornerRadius="8">
-                            <Grid>
-                                <Image
-                                    Width="40"
-                                    Height="40"
-                                    Source="{Binding IconSource}"
-                                    Stretch="Uniform"
-                                    Visibility="{Binding IconSource, Converter={StaticResource NullToCollapse}}" />
-                                <FontIcon
-                                    FontSize="28"
-                                    Glyph="{Binding Glyph}"
-                                    HorizontalAlignment="Center"
-                                    VerticalAlignment="Center"
-                                    Visibility="{Binding Glyph, Converter={StaticResource NullToCollapse}}" />
-                            </Grid>
+                            <controls:ToolIconPresenter Width="40" Height="40" GlyphSize="28" Glyph="{Binding Glyph}" IconSource="{Binding IconSource}" />
                         </Border>
                         <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
                             <TextBlock
@@ -173,20 +161,7 @@
                         HorizontalAlignment="Center"
                         Background="{ThemeResource SubtleFillColorSecondaryBrush}"
                         CornerRadius="8">
-                        <Grid>
-                            <Image
-                                Width="40"
-                                Height="40"
-                                Source="{Binding IconSource}"
-                                Stretch="Uniform"
-                                Visibility="{Binding IconSource, Converter={StaticResource NullToCollapse}}" />
-                            <FontIcon
-                                FontSize="28"
-                                Glyph="{Binding Glyph}"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Visibility="{Binding Glyph, Converter={StaticResource NullToCollapse}}" />
-                        </Grid>
+                        <controls:ToolIconPresenter Width="40" Height="40" GlyphSize="28" Glyph="{Binding Glyph}" IconSource="{Binding IconSource}" />
                     </Border>
                     <TextBlock
                         HorizontalAlignment="Center"

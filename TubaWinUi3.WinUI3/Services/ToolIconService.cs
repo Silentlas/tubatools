@@ -28,13 +28,20 @@ public static class ToolIconService
 
     private static readonly LruCache<string, string> _memoryCache = new(512);
 
+    public static string GetCategoryGlyph(string category) => category switch
+    {
+        "处理器工具" => "\uE950", "显卡工具" => "\uE7F4", "内存工具" => "\uE964",
+        "硬盘工具" => "\uEDA2", "显示器工具" => "\uE7F4", "外设工具" => "\uE765",
+        "烤鸡工具" => "\uECAD", "综合检测" => "\uE9D9", _ => "\uE8B7"
+    };
+
     public static string? GetIconGlyph(string toolPath)
     {
         var extension = Path.GetExtension(toolPath);
         if (extension.Equals(".exe", StringComparison.OrdinalIgnoreCase) ||
             extension.Equals(".lnk", StringComparison.OrdinalIgnoreCase))
         {
-            return null;
+            return "\uE8B7";
         }
         return ExtensionGlyphs.TryGetValue(extension, out var glyph) ? glyph : "\uE8B7";
     }
