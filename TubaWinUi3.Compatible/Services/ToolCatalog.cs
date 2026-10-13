@@ -152,6 +152,10 @@ namespace TubaWinUi3.Compatible.Services
                 items.AddRange(CreateCategoryCopyItems(placement, category));
             }
 
+            // 每种架构仍独立成卡，只合并同一分类里指向同一启动路径的重复项。
+            items = items.GroupBy(t => t.Path, StringComparer.OrdinalIgnoreCase)
+                .Select(g => g.First()).ToList();
+
             var toolOrderJson = AppSettings.Get("ToolOrder_" + category);
             List<string> toolOrder = null;
             if (!string.IsNullOrWhiteSpace(toolOrderJson))
@@ -276,6 +280,8 @@ namespace TubaWinUi3.Compatible.Services
         /// </summary>
         private static List<ToolItem> CreateCategoryCopyItems(ToolMetadataService.CategoryPlacement placement, string category)
         {
+            if (string.IsNullOrWhiteSpace(placement.Match))
+                return new List<ToolItem>();
             var primaryCategory = placement.PrimaryCategory;
             var categoryRoot = Path.Combine(ToolsRoot, primaryCategory);
             if (!Directory.Exists(categoryRoot))
@@ -288,6 +294,9 @@ namespace TubaWinUi3.Compatible.Services
             int bestScore = 0;
             foreach (var d in Directory.GetDirectories(categoryRoot))
             {
+                // 短 match 不得借用属于更具体条目的目录（原目录缺失时尤其如此）。
+                if (!ToolMetadataService.DirectoryBelongsToMatch(d, placement.Match))
+                    continue;
                 var name = Path.GetFileName(d);
                 int score;
                 if (string.Equals(name, placement.Match, StringComparison.OrdinalIgnoreCase))

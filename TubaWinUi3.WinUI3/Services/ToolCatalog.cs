@@ -287,7 +287,9 @@ public static class ToolCatalog
                 .ThenBy(item => item.RelativePath, StringComparer.CurrentCultureIgnoreCase)
                 .ToList();
 
-        IReadOnlyList<ToolItem> result = orderedItems.Concat(unorderedItems).ToList();
+        // 同一分类、同一启动路径只出一张卡片；不同分类的合法副本不受影响。
+        IReadOnlyList<ToolItem> result = orderedItems.Concat(unorderedItems)
+            .DistinctBy(item => item.Path, StringComparer.OrdinalIgnoreCase).ToList();
 
         lock (_cacheLock) { _toolsCache[category] = new CategoryCacheEntry(ToolsRoot, result); }
         return result;
@@ -1225,14 +1227,22 @@ public static class ToolCatalog
     /// </summary>
     private static ToolItem? CreateCategoryCopyItem(ToolMetadataService.CategoryPlacement placement, string category)
     {
+        if (string.IsNullOrWhiteSpace(placement.Match)) return null;
         var primaryCategory = placement.PrimaryCategory!;
         var categoryRoot = Path.Combine(ToolsRoot, primaryCategory);
         if (!Directory.Exists(categoryRoot)) return null;
 
         // 主分类下定位物理目录：相对路径含 match 或目录名灵活匹配（与 FindJsonMetadataByDir 同规则）。
         // 多候选时评分择优：目录名精确等于 match > 灵活匹配相等 > 相对路径包含，
-        // 避免 memtest / memtest64 / memtestpro 这类前缀重叠目录误配。
+        // 先核对目录归属：短 match 不得借用属于更具体条目的目录。
+        // 否则 memtest 缺失时，即使评分择优也会误选 memtest64 / memtestpro。
         var toolDir = Directory.GetDirectories(categoryRoot)
+            .Where(d =>
+            {
+                var metadata = ToolMetadataService.FindJsonMetadataByDir(d);
+                return metadata?.Directory is null && string.Equals(
+                    metadata?.Match, placement.Match, StringComparison.OrdinalIgnoreCase);
+            })
             .Select(d => new
             {
                 Dir = d,

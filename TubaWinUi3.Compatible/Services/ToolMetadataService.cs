@@ -150,6 +150,13 @@ namespace TubaWinUi3.Compatible.Services
             return best;
         }
 
+        internal static bool DirectoryBelongsToMatch(string toolDir, string match)
+        {
+            var metadata = FindJsonMetadataByDir(toolDir);
+            return metadata != null && string.IsNullOrWhiteSpace(metadata.Directory) &&
+                string.Equals(metadata.Match, match, StringComparison.OrdinalIgnoreCase);
+        }
+
         private static JsonToolMetadata FindJsonMetadataByDir(string toolDir)
         {
             var metadata = LoadMetadata();

@@ -112,6 +112,78 @@ public class ToolCategoryCopyTests : IDisposable
         Assert.Same(builtin, reordered[1]);
     }
 
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public void Copy_MissingMemtest_DoesNotBorrowAnotherRegisteredTool(bool keepMemtest, bool keepMemtest64)
+    {
+        File.WriteAllText(Path.Combine(_metadata, "tools.json"), """
+        { "tools": [
+          { "match": "memtest", "category": "内存工具", "categories": ["烤鸡工具"], "order": 39 },
+          { "match": "MemTest64", "category": "内存工具", "categories": ["烤鸡工具"], "order": 40 },
+          { "match": "memtestpro", "category": "内存工具", "categories": ["烤鸡工具"], "order": 41 }
+        ] }
+        """);
+        if (!keepMemtest) Directory.Delete(Path.Combine(_tools, "内存工具", "memtest"), true);
+        if (!keepMemtest64) Directory.Delete(Path.Combine(_tools, "内存工具", "memtest64"), true);
+        ToolMetadataService.SetMetadataRootForTests(_metadata);
+        ToolCatalog.OnToolsChanged();
+
+        var copies = ToolCatalog.GetTools("烤鸡工具");
+
+        Assert.Equal(1 + (keepMemtest ? 1 : 0) + (keepMemtest64 ? 1 : 0), copies.Count);
+        var pro = Assert.Single(copies.Where(t => t.Path.EndsWith("memtestpro.exe", StringComparison.OrdinalIgnoreCase)));
+        Assert.Equal(41, pro.SortOrder);
+        Assert.All(copies, t => Assert.True(t.IsLinked));
+    }
+
+    [Fact]
+    public void Copy_MissingToolWithoutExtraCategory_DoesNotCreateSpuriousCopy()
+    {
+        File.WriteAllText(Path.Combine(_metadata, "tools.json"), """
+        { "tools": [
+          { "match": "memtest", "category": "内存工具", "categories": ["烤鸡工具"] },
+          { "match": "memtestpro", "category": "内存工具" }
+        ] }
+        """);
+        Directory.Delete(Path.Combine(_tools, "内存工具", "memtest"), true);
+        Directory.Delete(Path.Combine(_tools, "内存工具", "memtest64"), true);
+        ToolMetadataService.SetMetadataRootForTests(_metadata);
+        ToolCatalog.OnToolsChanged();
+
+        Assert.Empty(ToolCatalog.GetTools("烤鸡工具"));
+        Assert.Single(ToolCatalog.GetTools("内存工具"));
+    }
+
+    [Theory]
+    [InlineData("AIDA-64")]
+    [InlineData("AIDA64-portable")]
+    public void Copy_RenamedDirectory_PreservesFlexibleMatching(string directoryName)
+    {
+        Directory.Move(Path.Combine(_tools, "综合检测", "AIDA64"), Path.Combine(_tools, "综合检测", directoryName));
+        ToolCatalog.OnToolsChanged();
+
+        var copy = Assert.Single(ToolCatalog.GetTools("显卡工具"));
+        Assert.Equal(Path.Combine(_tools, "综合检测", directoryName, "AIDA64.exe"), copy.Path);
+    }
+
+    [Fact]
+    public void Copy_DuplicateDeclarations_OnlyOneCardPerLaunchPath()
+    {
+        File.WriteAllText(Path.Combine(_metadata, "tools.json"), """
+        { "tools": [
+          { "match": "memtestpro", "category": "内存工具", "categories": ["烤鸡工具"], "order": 41 },
+          { "match": "memtestpro", "category": "内存工具", "categories": ["烤鸡工具"], "order": 41 }
+        ] }
+        """);
+        ToolMetadataService.SetMetadataRootForTests(_metadata);
+        ToolCatalog.OnToolsChanged();
+
+        Assert.Single(ToolCatalog.GetTools("烤鸡工具"));
+    }
+
     [Fact]
     public void BuiltinPlacement_AppearsWithVirtualDirKey()
     {
