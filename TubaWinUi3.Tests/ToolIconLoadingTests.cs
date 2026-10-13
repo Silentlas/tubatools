@@ -52,6 +52,47 @@ public sealed class ToolIconLoadingTests : IDisposable
         Name = "test", Category = "test", Path = path, RelativePath = path, Extension = ".exe"
     };
 
+    [Fact]
+    public async Task CachedIcons_AreReadyBeforePublishingCards_WithoutBackgroundNotifications()
+    {
+        var executable = Path.Combine(_root, "cached.exe");
+        File.Copy(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe"), executable);
+        var path = await ToolIconService.ExtractIconToCacheAsync(executable);
+        var writeTime = File.GetLastWriteTimeUtc(path!);
+        var tool = CreateTool(executable);
+        var notifications = 0;
+        tool.PropertyChanged += (_, _) => notifications++;
+        var cached = await ToolIconService.GetCachedIconsAsync([tool]);
+        var entry = Assert.Single(cached);
+        Assert.Same(tool, entry.Tool);
+        Assert.Equal(path, entry.Path);
+        Assert.Null(tool.IconPath);
+        Assert.Equal(0, notifications);
+        Assert.Equal(writeTime, File.GetLastWriteTimeUtc(entry.Path));
+        tool.IconPath = entry.Path;
+        Assert.Equal(1, notifications);
+    }
+
+    [Fact]
+    public async Task RapidCancelledNavigations_ReturningToCategory_ReusesDiskCache()
+    {
+        var executable = Path.Combine(_root, "return.exe");
+        File.Copy(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "cmd.exe"), executable);
+        var path = await ToolIconService.ExtractIconToCacheAsync(executable);
+        var writeTime = File.GetLastWriteTimeUtc(path!);
+        var tool = CreateTool(executable);
+        for (var i = 0; i < 20; i++)
+        {
+            using var cts = new CancellationTokenSource();
+            cts.Cancel();
+            await ToolIconService.LoadIconsAsync([tool], null, cts.Token);
+        }
+        Assert.Null(tool.IconPath);
+        await ToolIconService.LoadIconsAsync([tool], null);
+        Assert.Equal(path, tool.IconPath);
+        Assert.Equal(writeTime, File.GetLastWriteTimeUtc(path!));
+    }
+
     public void Dispose()
     {
         ConfigManager.DataDirectoryOverride = _previousOverride;

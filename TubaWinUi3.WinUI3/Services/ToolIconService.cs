@@ -29,6 +29,27 @@ public static class ToolIconService
     private static readonly LruCache<string, string> _memoryCache = new(512);
     // Shared by all pages, rather than allowing each navigation to start 4–8 extractors.
     private static readonly SemaphoreSlim ExtractionGate = new(1);
+    private static int _cacheRevision;
+    internal static int CacheRevision => Volatile.Read(ref _cacheRevision);
+
+    // Resolve file-system caches off-thread, without touching shared/bound ToolItems.
+    // The page applies these paths on its UI thread before realizing the cards.
+    internal static Task<IReadOnlyList<(ToolItem Tool, string Path)>> GetCachedIconsAsync(
+        IReadOnlyList<ToolItem> tools, CancellationToken cancellationToken = default)
+    {
+        var pending = tools.Where(t => t.IconPath is null && !string.IsNullOrWhiteSpace(t.Path)).ToList();
+        return Task.Run<IReadOnlyList<(ToolItem Tool, string Path)>>(() =>
+        {
+            var result = new List<(ToolItem, string)>();
+            foreach (var tool in pending)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var path = GetCachedIconPath(tool.Path);
+                if (path is not null) result.Add((tool, path));
+            }
+            return result;
+        }, cancellationToken);
+    }
 
     public static string GetCategoryGlyph(string category) => category switch
     {
@@ -115,6 +136,7 @@ public static class ToolIconService
                 Directory.CreateDirectory(CacheRoot);
                 var cacheKey = GetCacheKey(toolPath);
                 var iconPath = Path.Combine(CacheRoot, $"{cacheKey}.png");
+                var temporaryPath = iconPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
 
                 try
                 {
@@ -123,7 +145,9 @@ public static class ToolIconService
                         return null;
 
                     using var bitmap = icon.ToBitmap();
-                    bitmap.Save(iconPath, System.Drawing.Imaging.ImageFormat.Png);
+                    // Readers on a newly navigated page must never see a half-written PNG.
+                    bitmap.Save(temporaryPath, System.Drawing.Imaging.ImageFormat.Png);
+                    File.Move(temporaryPath, iconPath, overwrite: true);
                     _memoryCache.Set(cacheKey, iconPath);
                     return iconPath;
                 }
@@ -131,6 +155,10 @@ public static class ToolIconService
                 {
                     Debug.WriteLine($"Unable to extract icon for {toolPath}: {ex.Message}");
                     return null;
+                }
+                finally
+                {
+                    try { if (File.Exists(temporaryPath)) File.Delete(temporaryPath); } catch { }
                 }
             }, cancellationToken).ConfigureAwait(false);
         }
@@ -204,6 +232,7 @@ public static class ToolIconService
 
     public static void CleanExpiredCache()
     {
+        Interlocked.Increment(ref _cacheRevision);
         if (!Directory.Exists(CacheRoot))
             return;
 
@@ -227,6 +256,7 @@ public static class ToolIconService
 
     public static void CleanAllCache()
     {
+        Interlocked.Increment(ref _cacheRevision);
         _memoryCache.Clear();
 
         if (!Directory.Exists(CacheRoot))
@@ -241,6 +271,7 @@ public static class ToolIconService
 
     public static void InvalidateCache(string toolPath)
     {
+        Interlocked.Increment(ref _cacheRevision);
         var cacheKey = GetCacheKey(toolPath);
         _memoryCache.Remove(cacheKey);
 

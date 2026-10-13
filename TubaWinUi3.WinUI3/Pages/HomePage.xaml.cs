@@ -29,6 +29,7 @@ public sealed partial class HomePage : Page, ILocalizablePage
     private string? _lastLoadedTag;
     private string _lastLoadedQuery = string.Empty;
     private int _lastCacheVersion = -1;
+    private bool _hasLoadedTools;
     private int _tagBarCacheVersion = -1;
 
     // 标签栏：只保存标签名列表；按钮每次布局时按需重建（重建成本极低），
@@ -219,7 +220,7 @@ public sealed partial class HomePage : Page, ILocalizablePage
         _selectedTag = null;
         UpdateTitle();
 
-        var needsReload = _category != _lastLoadedCategory ||
+        var needsReload = !_hasLoadedTools || _category != _lastLoadedCategory ||
                           _selectedTag != _lastLoadedTag ||
                           _searchQuery != _lastLoadedQuery ||
                           ToolCatalog.CacheVersion != _lastCacheVersion;
@@ -233,6 +234,7 @@ public sealed partial class HomePage : Page, ILocalizablePage
             // 缓存命中不重载数据时，卡片文本仍可能过期（切换界面语言后回来）——
             // 绑定值不变不会自动重求值，需主动通知（分类显示名、启动按钮文案）。
             RefreshToolCardTexts();
+            _loadCts?.Cancel();
             _loadCts = new CancellationTokenSource();
             StartIconLoading(_tools.ToList());
             if (_highlightToolPath is not null)
@@ -410,7 +412,7 @@ public sealed partial class HomePage : Page, ILocalizablePage
         var cts = new CancellationTokenSource();
         _loadCts = cts;
 
-        _tools.Clear();
+        _hasLoadedTools = false;
 
         var query = _searchQuery;
         var category = _category;
@@ -430,12 +432,18 @@ public sealed partial class HomePage : Page, ILocalizablePage
 
             cts.Token.ThrowIfCancellationRequested();
 
+            var cachedIcons = await ToolIconService.GetCachedIconsAsync(tools, cts.Token);
+            cts.Token.ThrowIfCancellationRequested();
+            foreach (var (tool, path) in cachedIcons) tool.IconPath = path;
+
+            _tools.Clear();
             _tools.AddRange(tools);
 
-            _lastLoadedCategory = _category;
-            _lastLoadedTag = _selectedTag;
+            _lastLoadedCategory = category;
+            _lastLoadedTag = selectedTag;
             _lastLoadedQuery = query;
             _lastCacheVersion = ToolCatalog.CacheVersion;
+            _hasLoadedTools = true;
 
             UpdateDragReorderState();
 
