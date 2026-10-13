@@ -50,11 +50,6 @@ jobs:
           $staging = Join-Path $env:RUNNER_TEMP 'tools-staging'
           if (Test-Path -LiteralPath $staging) { Remove-Item -LiteralPath $staging -Recurse -Force }
           Copy-Item -LiteralPath 'TubaWinUi3.WinUI3\Tools' -Destination $staging -Recurse
-          $exclude = Join-Path $staging '综合检测\AIDA64\pkey.txt'
-          if (Test-Path -LiteralPath $exclude) {
-            Remove-Item -LiteralPath $exclude -Force
-            Write-Host "Excluded from Tools.zip: $exclude"
-          }
           Compress-Archive -Path "$staging\*" -DestinationPath 'Tools.zip'
           $size = [math]::Round((Get-Item 'Tools.zip').Length / 1MB, 1)
           Write-Host "Tools.zip size: $size MB"
