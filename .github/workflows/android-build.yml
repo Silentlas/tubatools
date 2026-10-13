@@ -15,7 +15,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: actions/setup-android@v4
+      - uses: android-actions/setup-android@v4
 
       - name: 构建 Debug APK 并运行单元测试
         working-directory: android-tuba-installer
@@ -46,7 +46,7 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - uses: actions/setup-android@v4
+      - uses: android-actions/setup-android@v4
 
       - name: 构建「手机助手」Debug APK 并运行单元测试
         working-directory: android-tuba-remote
