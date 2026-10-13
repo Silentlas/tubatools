@@ -5159,4 +5159,99 @@ Fields: label class_id score x y w h; Functions: count/contains/startsWith/endsW
   <data name="Settings_ToolVisibility_Title" xml:space="preserve">
     <value>Manage built-in tools and Start menu entries</value>
   </data>
+  <data name="Builtin_memory-manager_Name" xml:space="preserve"><value>Memory management</value></data>
+  <data name="Builtin_memory-manager_Desc" xml:space="preserve"><value>View memory usage and detailed values, trim cache and migrate pagefiles with backup and recovery.</value></data>
+
+  <data name="MS_Subtitle" xml:space="preserve"><value>Memory status, cache cleanup and pagefile migration</value></data>
+  <data name="MS_Memory" xml:space="preserve"><value>Physical memory</value></data>
+  <data name="MS_Refresh" xml:space="preserve"><value>Refresh</value></data>
+  <data name="MS_Clean" xml:space="preserve"><value>Clean now</value></data>
+  <data name="MS_CleanHint" xml:space="preserve"><value>Trim low-priority cache without closing apps. Less cache does not necessarily mean more available RAM.</value></data>
+  <data name="MS_Details" xml:space="preserve"><value>Detailed memory breakdown</value></data>
+  <data name="MS_DetailHint" xml:space="preserve"><value>Every value remains visible, including small shares. Cache, pools and commit overlap; do not add them together.</value></data>
+  <data name="MS_Migration" xml:space="preserve"><value>Move pagefile</value></data>
+  <data name="MS_MigrationHint" xml:space="preserve"><value>Pagefiles increase the system commit budget. Migration changes next-boot settings; it does not move or delete live files.</value></data>
+  <data name="MS_Source" xml:space="preserve"><value>1 · Current location</value></data>
+  <data name="MS_Target" xml:space="preserve"><value>2 · Destination drive</value></data>
+  <data name="MS_Sizing" xml:space="preserve"><value>Destination pagefile size</value></data>
+  <data name="MS_SystemManaged" xml:space="preserve"><value>Windows managed (recommended)</value></data>
+  <data name="MS_Custom" xml:space="preserve"><value>Custom size</value></data>
+  <data name="MS_Initial" xml:space="preserve"><value>Initial size (MiB)</value></data>
+  <data name="MS_Maximum" xml:space="preserve"><value>Maximum size (MiB)</value></data>
+  <data name="MS_KeepSystem" xml:space="preserve"><value>Keep a system-managed pagefile on the system drive (recommended for crash dumps)</value></data>
+  <data name="MS_Migrate" xml:space="preserve"><value>Review and move</value></data>
+  <data name="MS_Restart" xml:space="preserve"><value>Review all changes before applying. Automatic backup; takes effect after restart.</value></data>
+  <data name="MS_Recovery" xml:space="preserve"><value>Recovery and system settings</value></data>
+  <data name="MS_RecoveryHint" xml:space="preserve"><value>Failures trigger rollback. You can also restore the previous backup or Windows automatic management.</value></data>
+  <data name="MS_Restore" xml:space="preserve"><value>Restore backup</value></data>
+  <data name="MS_Automatic" xml:space="preserve"><value>Restore Windows automatic management</value></data>
+  <data name="MS_SystemSettings" xml:space="preserve"><value>Open system settings</value></data>
+  <data name="MS_Admin" xml:space="preserve"><value>Reopen as administrator</value></data>
+  <data name="MS_Available" xml:space="preserve"><value>Available memory</value></data>
+  <data name="MS_Installed" xml:space="preserve"><value>Installed capacity</value></data>
+  <data name="MS_Total" xml:space="preserve"><value>OS physical capacity</value></data>
+  <data name="MS_Reserved" xml:space="preserve"><value>Hardware reserved (of installed capacity)</value></data>
+  <data name="MS_Occupied" xml:space="preserve"><value>Occupied (includes modified pages)</value></data>
+  <data name="MS_Free" xml:space="preserve"><value>Free</value></data>
+  <data name="MS_Zeroed" xml:space="preserve"><value>Zeroed</value></data>
+  <data name="MS_Standby" xml:space="preserve"><value>Standby cache</value></data>
+  <data name="MS_Modified" xml:space="preserve"><value>Modified pages</value></data>
+  <data name="MS_Cache" xml:space="preserve"><value>System cache</value></data>
+  <data name="MS_PagedPool" xml:space="preserve"><value>Paged pool</value></data>
+  <data name="MS_NonpagedPool" xml:space="preserve"><value>Nonpaged pool</value></data>
+  <data name="MS_Commit" xml:space="preserve"><value>Committed (of commit limit)</value></data>
+  <data name="MS_CommitPeak" xml:space="preserve"><value>Peak commit (of commit limit)</value></data>
+  <data name="MS_CommitLimit" xml:space="preserve"><value>Commit limit</value></data>
+  <data name="MS_Priority" xml:space="preserve"><value>Standby priority</value></data>
+  <data name="MS_Current" xml:space="preserve"><value>Running now:</value></data>
+  <data name="MS_NoFile" xml:space="preserve"><value>No runtime pagefile found</value></data>
+  <data name="MS_NextBoot" xml:space="preserve"><value>Saved configuration (next boot):</value></data>
+  <data name="MS_ChooseDrives" xml:space="preserve"><value>Choose source and destination drives</value></data>
+  <data name="MS_Integer" xml:space="preserve"><value>Size must be valid integer MiB</value></data>
+  <data name="MS_Preview" xml:space="preserve"><value>After migration:</value></data>
+  <data name="MS_FreeSpace" xml:space="preserve"><value>Destination free space:</value></data>
+  <data name="MS_Managed" xml:space="preserve"><value>System managed</value></data>
+  <data name="MS_ReadFirst" xml:space="preserve"><value>Refresh the current configuration first</value></data>
+  <data name="MS_Confirm" xml:space="preserve"><value>Confirm pagefile changes</value></data>
+  <data name="MS_Before" xml:space="preserve"><value>Before:</value></data>
+  <data name="MS_After" xml:space="preserve"><value>After:</value></data>
+  <data name="MS_ConfirmHint" xml:space="preserve"><value>The original configuration will be backed up. Changes affect commit capacity and crash dumps and take effect after restart.</value></data>
+  <data name="MS_Apply" xml:space="preserve"><value>Apply</value></data>
+  <data name="MS_Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="MS_Pending" xml:space="preserve"><value>Configuration saved and verified. Restart to finish migration; running files remain in their original locations until then.</value></data>
+  <data name="MS_CleanDone" xml:space="preserve"><value>Cleanup completed. Available memory change:</value></data>
+  <data name="MS_StandbyChange" xml:space="preserve"><value>Standby cache:</value></data>
+  <data name="MS_Charts" xml:space="preserve"><value>Memory charts</value></data>
+  <data name="MS_ChartMode" xml:space="preserve"><value>View</value></data>
+  <data name="MS_ChartGroup" xml:space="preserve"><value>Metric group</value></data>
+  <data name="MS_ChartUnit" xml:space="preserve"><value>Units</value></data>
+  <data name="MS_ChartWindow" xml:space="preserve"><value>Trend window</value></data>
+  <data name="MS_SmallScale" xml:space="preserve"><value>Magnify small values (log scale)</value></data>
+  <data name="MS_PauseSample" xml:space="preserve"><value>Pause sampling</value></data>
+  <data name="MS_ResetZoom" xml:space="preserve"><value>Reset zoom</value></data>
+  <data name="MS_ExportCsv" xml:space="preserve"><value>Export samples as CSV</value></data>
+  <data name="MS_Trend" xml:space="preserve"><value>Live trend</value></data>
+  <data name="MS_Compare" xml:space="preserve"><value>Current category comparison</value></data>
+  <data name="MS_PhysicalGroup" xml:space="preserve"><value>Physical memory</value></data>
+  <data name="MS_CacheGroup" xml:space="preserve"><value>Cache and kernel pools</value></data>
+  <data name="MS_CommitGroup" xml:space="preserve"><value>Commit budget</value></data>
+  <data name="MS_PriorityGroup" xml:space="preserve"><value>Standby priorities 0–7</value></data>
+  <data name="MS_CapacityUnit" xml:space="preserve"><value>Capacity (automatic units)</value></data>
+  <data name="MS_PercentUnit" xml:space="preserve"><value>Percentage of respective total</value></data>
+  <data name="MS_Minutes" xml:space="preserve"><value> minutes</value></data>
+  <data name="MS_CurrentValues" xml:space="preserve"><value>Current values</value></data>
+  <data name="MS_LogHint" xml:space="preserve"><value>Log scale magnifies small values; height and length do not represent actual shares. Hover for values; select individual metrics.</value></data>
+  <data name="MS_GraphHint" xml:space="preserve"><value>Hover for values, scroll to zoom and select individual metrics. Exact capacities and shares remain below; overlapping metrics are not added.</value></data>
+  <data name="MS_CleanMode" xml:space="preserve"><value>Cleanup mode</value></data>
+  <data name="MS_LightClean" xml:space="preserve"><value>Light: low-priority standby cache</value></data>
+  <data name="MS_StandardClean" xml:space="preserve"><value>Standard: background working sets + all standby cache (recommended)</value></data>
+  <data name="MS_DeepClean" xml:space="preserve"><value>Deep: also trim system file cache and request modified-page writeback</value></data>
+  <data name="MS_DeepConfirm" xml:space="preserve"><value>Deep memory cleanup</value></data>
+  <data name="MS_StandardConfirm" xml:space="preserve"><value>Standard memory cleanup</value></data>
+  <data name="MS_Cleaning" xml:space="preserve"><value>Cleaning; measuring again after three seconds…</value></data>
+  <data name="MS_MeasuredClean" xml:space="preserve"><value>Available memory: before → immediate → after three seconds</value></data>
+  <data name="MS_ActualChange" xml:space="preserve"><value>Measured change after three seconds:</value></data>
+  <data name="MS_StandardHint" xml:space="preserve"><value>Trim background working sets in your session, then purge standby. Foreground, self, critical and protected processes are skipped. Apps stay open; reloads may briefly stutter, and private commit remains.</value></data>
+  <data name="MS_DeepHint" xml:space="preserve"><value>Includes standard cleanup, file-cache trimming and modified-page writeback requests. Disk I/O and reload time may increase. No apps are closed or pagefiles deleted; application leaks are not fixed.</value></data>
+  <data name="MS_LightHint" xml:space="preserve"><value>Only purge low-priority standby cache; other caches and working sets remain, so gains may be small.</value></data>
 </root>

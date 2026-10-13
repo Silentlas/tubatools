@@ -5175,4 +5175,99 @@ else then stroke=#888888 visible=true
   <data name="Settings_ToolVisibility_Title" xml:space="preserve">
     <value>管理内置工具与开始菜单展示</value>
   </data>
+  <data name="Builtin_memory-manager_Name" xml:space="preserve"><value>内存管理</value></data>
+  <data name="Builtin_memory-manager_Desc" xml:space="preserve"><value>查看内存占用和细分容量，简单整理缓存，分步迁移分页文件并支持备份恢复。</value></data>
+
+  <data name="MS_Subtitle" xml:space="preserve"><value>查看内存状态，整理缓存，把分页文件迁移到其他磁盘</value></data>
+  <data name="MS_Memory" xml:space="preserve"><value>物理内存</value></data>
+  <data name="MS_Refresh" xml:space="preserve"><value>刷新</value></data>
+  <data name="MS_Clean" xml:space="preserve"><value>开始清理</value></data>
+  <data name="MS_CleanHint" xml:space="preserve"><value>整理低优先级缓存，不关闭应用。缓存减少不一定增加可用内存。</value></data>
+  <data name="MS_Details" xml:space="preserve"><value>查看详细内存分布</value></data>
+  <data name="MS_DetailHint" xml:space="preserve"><value>每项显示实际容量和占比；小项也不会隐藏。缓存、池和提交属于不同口径，不相加。</value></data>
+  <data name="MS_Migration" xml:space="preserve"><value>分页文件迁移</value></data>
+  <data name="MS_MigrationHint" xml:space="preserve"><value>分页文件为系统提供额外的内存提交空间。迁移只修改下次启动配置，不直接移动或删除正在使用的文件。</value></data>
+  <data name="MS_Source" xml:space="preserve"><value>1 · 当前位置</value></data>
+  <data name="MS_Target" xml:space="preserve"><value>2 · 目标磁盘</value></data>
+  <data name="MS_Sizing" xml:space="preserve"><value>目标分页文件大小</value></data>
+  <data name="MS_SystemManaged" xml:space="preserve"><value>由 Windows 管理（推荐）</value></data>
+  <data name="MS_Custom" xml:space="preserve"><value>自定义大小</value></data>
+  <data name="MS_Initial" xml:space="preserve"><value>初始大小（MiB）</value></data>
+  <data name="MS_Maximum" xml:space="preserve"><value>最大大小（MiB）</value></data>
+  <data name="MS_KeepSystem" xml:space="preserve"><value>在系统盘保留系统管理的分页文件（推荐，有助于崩溃转储）</value></data>
+  <data name="MS_Migrate" xml:space="preserve"><value>检查并迁移</value></data>
+  <data name="MS_Restart" xml:space="preserve"><value>应用前显示完整变更，自动备份；重启电脑后生效。</value></data>
+  <data name="MS_Recovery" xml:space="preserve"><value>恢复与系统设置</value></data>
+  <data name="MS_RecoveryHint" xml:space="preserve"><value>迁移失败时会尝试恢复原配置，也可以恢复上次备份或让 Windows 自动管理。</value></data>
+  <data name="MS_Restore" xml:space="preserve"><value>恢复上次备份</value></data>
+  <data name="MS_Automatic" xml:space="preserve"><value>恢复 Windows 自动管理</value></data>
+  <data name="MS_SystemSettings" xml:space="preserve"><value>打开系统设置</value></data>
+  <data name="MS_Admin" xml:space="preserve"><value>以管理员身份重新打开</value></data>
+  <data name="MS_Available" xml:space="preserve"><value>可用内存</value></data>
+  <data name="MS_Installed" xml:space="preserve"><value>安装容量</value></data>
+  <data name="MS_Total" xml:space="preserve"><value>系统可用总容量</value></data>
+  <data name="MS_Reserved" xml:space="preserve"><value>硬件保留（占安装容量）</value></data>
+  <data name="MS_Occupied" xml:space="preserve"><value>已占用（含修改页）</value></data>
+  <data name="MS_Free" xml:space="preserve"><value>空闲</value></data>
+  <data name="MS_Zeroed" xml:space="preserve"><value>已清零</value></data>
+  <data name="MS_Standby" xml:space="preserve"><value>待机缓存</value></data>
+  <data name="MS_Modified" xml:space="preserve"><value>修改页</value></data>
+  <data name="MS_Cache" xml:space="preserve"><value>系统缓存</value></data>
+  <data name="MS_PagedPool" xml:space="preserve"><value>分页池</value></data>
+  <data name="MS_NonpagedPool" xml:space="preserve"><value>非分页池</value></data>
+  <data name="MS_Commit" xml:space="preserve"><value>已提交（占提交上限）</value></data>
+  <data name="MS_CommitPeak" xml:space="preserve"><value>提交峰值（占提交上限）</value></data>
+  <data name="MS_CommitLimit" xml:space="preserve"><value>提交上限</value></data>
+  <data name="MS_Priority" xml:space="preserve"><value>待机优先级</value></data>
+  <data name="MS_Current" xml:space="preserve"><value>当前运行：</value></data>
+  <data name="MS_NoFile" xml:space="preserve"><value>当前未发现分页文件</value></data>
+  <data name="MS_NextBoot" xml:space="preserve"><value>已保存配置（下次启动）：</value></data>
+  <data name="MS_ChooseDrives" xml:space="preserve"><value>请选择当前位置和目标磁盘</value></data>
+  <data name="MS_Integer" xml:space="preserve"><value>大小必须是有效的整数 MiB</value></data>
+  <data name="MS_Preview" xml:space="preserve"><value>迁移后的配置：</value></data>
+  <data name="MS_FreeSpace" xml:space="preserve"><value>目标磁盘剩余空间：</value></data>
+  <data name="MS_Managed" xml:space="preserve"><value>系统管理</value></data>
+  <data name="MS_ReadFirst" xml:space="preserve"><value>请先刷新当前配置</value></data>
+  <data name="MS_Confirm" xml:space="preserve"><value>确认分页文件变更</value></data>
+  <data name="MS_Before" xml:space="preserve"><value>原配置：</value></data>
+  <data name="MS_After" xml:space="preserve"><value>新配置：</value></data>
+  <data name="MS_ConfirmHint" xml:space="preserve"><value>将备份原配置。更改会影响提交上限和崩溃转储，重启电脑后生效。</value></data>
+  <data name="MS_Apply" xml:space="preserve"><value>应用配置</value></data>
+  <data name="MS_Cancel" xml:space="preserve"><value>取消</value></data>
+  <data name="MS_Pending" xml:space="preserve"><value>配置已保存并验证。请重启电脑完成迁移；当前使用的文件暂时仍在原位置。</value></data>
+  <data name="MS_CleanDone" xml:space="preserve"><value>整理完成。可用内存变化：</value></data>
+  <data name="MS_StandbyChange" xml:space="preserve"><value>待机缓存：</value></data>
+  <data name="MS_Charts" xml:space="preserve"><value>内存图表</value></data>
+  <data name="MS_ChartMode" xml:space="preserve"><value>查看方式</value></data>
+  <data name="MS_ChartGroup" xml:space="preserve"><value>数据分类</value></data>
+  <data name="MS_ChartUnit" xml:space="preserve"><value>显示单位</value></data>
+  <data name="MS_ChartWindow" xml:space="preserve"><value>趋势时间范围</value></data>
+  <data name="MS_SmallScale" xml:space="preserve"><value>放大小项（对数尺度）</value></data>
+  <data name="MS_PauseSample" xml:space="preserve"><value>暂停采样</value></data>
+  <data name="MS_ResetZoom" xml:space="preserve"><value>重置缩放</value></data>
+  <data name="MS_ExportCsv" xml:space="preserve"><value>导出采样 CSV</value></data>
+  <data name="MS_Trend" xml:space="preserve"><value>实时趋势</value></data>
+  <data name="MS_Compare" xml:space="preserve"><value>当前分类对比</value></data>
+  <data name="MS_PhysicalGroup" xml:space="preserve"><value>物理内存</value></data>
+  <data name="MS_CacheGroup" xml:space="preserve"><value>缓存与内核池</value></data>
+  <data name="MS_CommitGroup" xml:space="preserve"><value>提交预算</value></data>
+  <data name="MS_PriorityGroup" xml:space="preserve"><value>待机优先级 0–7</value></data>
+  <data name="MS_CapacityUnit" xml:space="preserve"><value>容量（自动单位）</value></data>
+  <data name="MS_PercentUnit" xml:space="preserve"><value>占对应总量的百分比</value></data>
+  <data name="MS_Minutes" xml:space="preserve"><value> 分钟</value></data>
+  <data name="MS_CurrentValues" xml:space="preserve"><value>当前值</value></data>
+  <data name="MS_LogHint" xml:space="preserve"><value>对数尺度放大小项，柱长或曲线高度不表示真实占比。悬停看精确值；勾选指标可单独查看。</value></data>
+  <data name="MS_GraphHint" xml:space="preserve"><value>悬停查看精确值，滚轮缩放；勾选指标可单独比较小项。每项容量和占比始终在下方显示，不把重叠指标相加。</value></data>
+  <data name="MS_CleanMode" xml:space="preserve"><value>清理方式</value></data>
+  <data name="MS_LightClean" xml:space="preserve"><value>轻量：低优先级待机缓存</value></data>
+  <data name="MS_StandardClean" xml:space="preserve"><value>标准：后台工作集 + 全部待机缓存（推荐）</value></data>
+  <data name="MS_DeepClean" xml:space="preserve"><value>深度：额外整理系统文件缓存并请求修改页写回</value></data>
+  <data name="MS_DeepConfirm" xml:space="preserve"><value>深度内存清理</value></data>
+  <data name="MS_StandardConfirm" xml:space="preserve"><value>标准内存清理</value></data>
+  <data name="MS_Cleaning" xml:space="preserve"><value>正在清理，完成后再采样三秒…</value></data>
+  <data name="MS_MeasuredClean" xml:space="preserve"><value>可用内存：清理前 → 完成时 → 三秒后</value></data>
+  <data name="MS_ActualChange" xml:space="preserve"><value>三秒后实际变化：</value></data>
+  <data name="MS_StandardHint" xml:space="preserve"><value>整理当前用户的后台进程工作集，再清空待机缓存。跳过前台、自身、系统关键和受保护进程；不关闭应用。程序稍后重新使用这些数据时可能短暂卡顿，私有提交不会释放。</value></data>
+  <data name="MS_DeepHint" xml:space="preserve"><value>包含标准清理，并整理系统文件缓存、请求修改页写回。可能明显增加磁盘读写和重新加载时间。不会关闭程序或删除分页文件，也不能根治应用内存泄漏。</value></data>
+  <data name="MS_LightHint" xml:space="preserve"><value>仅整理低优先级待机缓存；其他优先级缓存和进程工作集保持原样，收益可能很小。</value></data>
 </root>

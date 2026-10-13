@@ -73,6 +73,7 @@ public static class BuiltinToolRegistry
         Register(new HandleCleanerTool());
         Register(new EnvironmentVariablesTool());
         Register(new AiPlaygroundTool());
+        Register(new MemoryManagerTool());
     }
 
     public static IReadOnlyList<string> GetCategories()

@@ -300,6 +300,9 @@ public sealed class LlmChatRunner : IDisposable
 
     public bool IsLoaded => false;
     public string RuntimeNote => "x86 版本不支持本地推理";
+    // Keep the x86 compile stub's public configuration surface aligned with the full runner.
+    public int ContextTokensOverride { get; set; }
+    public int ContextBudgetTokens => LlmContextBudget.DefaultBudgetTokens;
 
     public static void EnsureOgaHandle() { }
 

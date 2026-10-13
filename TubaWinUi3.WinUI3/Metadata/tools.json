@@ -2,6 +2,11 @@
   "$schema": "https://example.local/tubawinui3-tools.schema.json",
   "tools": [
     {
+      "match": "内存管理",
+      "builtin": "memory-manager",
+      "categories": ["内存工具", "其他工具"]
+    },
+    {
       "match": "CPU-Z",
       "order": 1,
       "description": "处理器、主板、内存和显卡基础信息查看工具。",
