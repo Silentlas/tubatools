@@ -76,6 +76,15 @@ public sealed class CertBlockTool : IBuiltinTool
             IsClosable = false
         };
 
+        var compatibilityWarning = new InfoBar
+        {
+            Title = "兼容性提示",
+            Message = "已知反馈：租号玩系列软件依赖系统证书，全部禁用证书可能会被判定为环境异常。使用这类软件前请勿点击「全部封锁」；如已出现异常，请点击「全部解锁」后重试。（反馈：GitHub Issue #229）",
+            Severity = InfoBarSeverity.Warning,
+            IsOpen = true,
+            IsClosable = false
+        };
+
         var isAdmin = CertBlockService.IsAdmin;
         var blockAllBtn = new Button { Content = "全部封锁", MinWidth = 90, IsEnabled = isAdmin };
         var unblockAllBtn = new Button { Content = "全部解锁", MinWidth = 90, IsEnabled = isAdmin };
@@ -110,13 +119,15 @@ public sealed class CertBlockTool : IBuiltinTool
         contentGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         contentGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         contentGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        contentGrid.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         contentGrid.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
 
         contentGrid.Children.Add(statsGrid); Grid.SetRow(statsGrid, 0);
         contentGrid.Children.Add(adminWarning); Grid.SetRow(adminWarning, 1);
-        contentGrid.Children.Add(actionBar); Grid.SetRow(actionBar, 2);
-        contentGrid.Children.Add(loadingPanel); Grid.SetRow(loadingPanel, 3);
-        contentGrid.Children.Add(listScroll); Grid.SetRow(listScroll, 3);
+        contentGrid.Children.Add(compatibilityWarning); Grid.SetRow(compatibilityWarning, 2);
+        contentGrid.Children.Add(actionBar); Grid.SetRow(actionBar, 3);
+        contentGrid.Children.Add(loadingPanel); Grid.SetRow(loadingPanel, 4);
+        contentGrid.Children.Add(listScroll); Grid.SetRow(listScroll, 4);
 
         var root = new StackPanel { Spacing = 14, Padding = new Thickness(24, 0, 24, 16) };
         root.Children.Add(new TextBlock
