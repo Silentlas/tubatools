@@ -7,13 +7,10 @@ public static class FastModeService
     // 保留 FastModeEnabled 键名以兼容既有用户设置与导航映射。
     private const string FastModeKey = "FastModeEnabled";
 
-    public static event Action<bool>? FastModeChanged;
-
     public static bool IsFastModeEnabled() => AppSettings.GetBool(FastModeKey);
 
     public static void SetFastModeEnabled(bool enabled)
     {
         AppSettings.Set(FastModeKey, enabled);
-        FastModeChanged?.Invoke(enabled);
     }
 }

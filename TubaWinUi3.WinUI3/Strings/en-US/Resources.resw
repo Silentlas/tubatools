@@ -500,12 +500,6 @@
   <data name="Search_SettingConfigManagerDesc" xml:space="preserve">
     <value>Manage config storage location, export and import</value>
   </data>
-  <data name="Search_SettingCustomToolManager" xml:space="preserve">
-    <value>Custom tool manager</value>
-  </data>
-  <data name="Search_SettingCustomToolManagerDesc" xml:space="preserve">
-    <value>Manage categories and import custom tools</value>
-  </data>
   <data name="Search_SettingExportApp" xml:space="preserve">
     <value>Export app</value>
   </data>

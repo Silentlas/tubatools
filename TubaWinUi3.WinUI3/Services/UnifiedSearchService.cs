@@ -23,7 +23,6 @@ public static class UnifiedSearchService
         new("Search_SettingBackground", "背景图片", "Search_SettingBackgroundDesc", "导入图片作为主页面背景", "\uE91B", "Background"),
         new("Search_SettingUpdate", "检查更新", "Search_SettingUpdateDesc", "检查是否有新版本", "\uE895", "Update"),
         new("Search_SettingConfigManager", "配置管理", "Search_SettingConfigManagerDesc", "管理配置文件的存储位置、导出和导入", "\uE8B7", "ConfigManager"),
-        new("Search_SettingCustomToolManager", "自定义工具管理", "Search_SettingCustomToolManagerDesc", "管理工具分类、导入自定义工具", "\uE8B7", "CustomToolManager"),
         new("Search_SettingExportApp", "导出当前软件", "Search_SettingExportAppDesc", "打包成可分发压缩包", "\uE896", "ExportApp"),
     ];
 
