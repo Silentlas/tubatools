@@ -32,6 +32,10 @@ build-log.txt
 *.nuget.targets
 project.lock.json
 
+# Local offline package cache / build scratch (machine-local, not shipped)
+.nugetcache/
+.tmpbuild/
+
 # MSIX packaging output
 AppPackages/
 BundleArtifacts/

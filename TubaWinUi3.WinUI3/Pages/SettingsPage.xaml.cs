@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Linq;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -31,6 +31,7 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
     private bool _navLayoutInitializing;
     private bool _rememberWindowInitializing;
     private bool _closeToTrayInitializing;
+    private bool _fastModeInitializing;
     private bool _defaultPageInitializing;
     private bool _showFrequentInitializing;
     private bool _languageInitializing;
@@ -123,15 +124,16 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         ["NavLayoutMode"] = "GeneralExpander",
         ["DefaultPage"] = "GeneralExpander",
         ["ShowFrequentRecommendations"] = "GeneralExpander",
+        ["FastMode"] = "GeneralExpander",
         ["RememberWindow"] = "GeneralExpander",
         ["CloseToTray"] = "GeneralExpander",
         ["Update"] = "GeneralExpander",
         ["ToolsBundle"] = "GeneralExpander",
         ["Background"] = "AppearanceExpander",
+        ["Theme"] = "AppearanceExpander",
         ["Backdrop"] = "AppearanceExpander",
         ["BrandLogo"] = "AppearanceExpander",
         ["Watermark"] = "AppearanceExpander",
-        ["InterfaceFont"] = "AppearanceExpander",
         ["HardwareFitScreen"] = "HardwareAiExpander",
         ["HardwareMultiDeviceNewLine"] = "HardwareAiExpander",
         ["AiApiEndpoint"] = "HardwareAiExpander",
@@ -145,7 +147,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         ["HttpDownloadAction"] = "ToolsCommunityExpander",
         ["ConfigManager"] = "ToolsCommunityExpander",
         ["StorageUsage"] = "ToolsCommunityExpander",
-        ["CustomToolManager"] = "ToolsCommunityExpander",
         ["ExportApp"] = "ToolsCommunityExpander",
         ["CommunityTool"] = "ToolsCommunityExpander",
         ["ActiveInterceptEnabled"] = "ToolsCommunityExpander",
@@ -159,15 +160,16 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         ["NavLayoutMode"] = "SettingsNavLayoutCard",
         ["DefaultPage"] = "SettingsDefaultPageCard",
         ["ShowFrequentRecommendations"] = "SettingsShowFrequentCard",
+        ["FastMode"] = "SettingsFastModeCard",
         ["RememberWindow"] = "SettingsRememberWindowCard",
         ["CloseToTray"] = "SettingsCloseToTrayCard",
         ["Update"] = "SettingsUpdateCard",
         ["ToolsBundle"] = "SettingsToolsBundleCard",
         ["Background"] = "SettingsBackgroundCard",
+        ["Theme"] = "SettingsThemeCard",
         ["Backdrop"] = "SettingsBackdropCard",
         ["BrandLogo"] = "SettingsBrandLogoCard",
         ["Watermark"] = "SettingsWatermarkCard",
-        ["InterfaceFont"] = "SettingsInterfaceFontCard",
         ["HardwareFitScreen"] = "SettingsHardwareFitScreenCard",
         ["HardwareMultiDeviceNewLine"] = "SettingsHardwareMultiDeviceNewLineCard",
         ["AiApiEndpoint"] = "SettingsAiEndpointCard",
@@ -181,7 +183,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         ["HttpDownloadAction"] = "SettingsHttpDownloadCard",
         ["ConfigManager"] = "SettingsConfigManagerCard",
         ["StorageUsage"] = "SettingsStorageUsageCard",
-        ["CustomToolManager"] = "SettingsCustomToolCard",
         ["ExportApp"] = "SettingsExportAppCard",
         ["CommunityTool"] = "SettingsCommunityCard",
         ["ActiveInterceptEnabled"] = "SettingsActiveInterceptCard",
@@ -214,6 +215,7 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         InitThemeSelector();
         InitRememberWindowToggle();
         InitCloseToTrayToggle();
+        InitFastModeToggle();
         InitUpdateSection();
         InitBackdropSettings();
         LoadBackgroundSettings();
@@ -608,6 +610,19 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
     {
         if (_closeToTrayInitializing) return;
         CloseToTrayService.SetEnabled(CloseToTrayToggle.IsOn);
+    }
+
+    private void InitFastModeToggle()
+    {
+        _fastModeInitializing = true;
+        FastModeToggle.IsOn = FastModeService.IsFastModeEnabled();
+        _fastModeInitializing = false;
+    }
+
+    private void FastModeToggle_Toggled(object sender, RoutedEventArgs e)
+    {
+        if (_fastModeInitializing) return;
+        FastModeService.SetFastModeEnabled(FastModeToggle.IsOn);
     }
 
     private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
@@ -2656,6 +2671,20 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
 
     private void PlayRatingThanksFlourish()
     {
+        if (FastModeService.IsFastModeEnabled())
+        {
+            RatingThanksScrim.Opacity = 1;
+            RatingThanksCard.Opacity = 1;
+            RatingThanksCardTransform.ScaleX = 1;
+            RatingThanksCardTransform.ScaleY = 1;
+            RatingThanksCardTransform.TranslateY = 0;
+            RatingThanksBadgeTransform.ScaleX = 1;
+            RatingThanksBadgeTransform.ScaleY = 1;
+            RatingThanksBadgeTransform.Rotation = 0;
+            RatingThanksHalo.Opacity = 0.9;
+            return;
+        }
+
         var storyboard = new Storyboard();
         AddAnimation(storyboard, RatingThanksScrim, "Opacity", 1, 220, 0, new CubicEase { EasingMode = EasingMode.EaseOut });
         AddAnimation(storyboard, RatingThanksHalo, "Opacity", 0.9, 720, 180, new CubicEase { EasingMode = EasingMode.EaseOut });
@@ -2694,6 +2723,7 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
     private void SpawnRatingSparkles()
     {
         RatingThanksParticleCanvas.Children.Clear();
+        if (FastModeService.IsFastModeEnabled()) return;
 
         var badgeWidth = RatingThanksBadge.ActualWidth;
         var badgeHeight = RatingThanksBadge.ActualHeight;
@@ -2817,7 +2847,18 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
     private void OpenSourceButton_Click(object sender, RoutedEventArgs e)
     {
         DrawerOverlay.Visibility = Visibility.Visible;
-        DrawerOpenStoryboard.Begin();
+        if (FastModeService.IsFastModeEnabled())
+        {
+            // 动画 HoldEnd 的保持值优先于局部赋值，必须先停掉两个 Storyboard 再直接设值。
+            DrawerOpenStoryboard.Stop();
+            DrawerCloseStoryboard.Stop();
+            DrawerOverlayBackground.Opacity = 1;
+            DrawerPanelTransform.X = 0;
+        }
+        else
+        {
+            DrawerOpenStoryboard.Begin();
+        }
     }
 
     private void DrawerCloseButton_Click(object sender, RoutedEventArgs e)
@@ -2832,6 +2873,16 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
 
     private void CloseDrawer()
     {
+        if (FastModeService.IsFastModeEnabled())
+        {
+            // 动画 HoldEnd 的保持值优先于局部赋值，必须先停掉两个 Storyboard 再直接设值。
+            DrawerOpenStoryboard.Stop();
+            DrawerCloseStoryboard.Stop();
+            DrawerOverlay.Visibility = Visibility.Collapsed;
+            DrawerOverlayBackground.Opacity = 0;
+            DrawerPanelTransform.X = 420;
+            return;
+        }
         DrawerCloseStoryboard.Completed += OnDrawerCloseCompleted;
         DrawerCloseStoryboard.Begin();
     }
@@ -2873,10 +2924,20 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         _easterEggClickCount++;
         var idx = (_easterEggClickCount - 1) % EasterEggMessages.Length;
 
-        AppInfoCardScale.ScaleX = 0.92;
-        AppInfoCardScale.ScaleY = 1.08;
         AppTitleText.Text = "🎉 " + EasterEggMessages[idx];
         AppSubtitleText.Opacity = 0.5;
+
+        if (FastModeService.IsFastModeEnabled())
+        {
+            // 低配模式：跳过弹跳动画，文案保留 2 秒后照常复位（不播放恢复动画）。
+            AppInfoCardScale.ScaleX = 1.0;
+            AppInfoCardScale.ScaleY = 1.0;
+            _ = RestoreEasterEggAsync(ct);
+            return;
+        }
+
+        AppInfoCardScale.ScaleX = 0.92;
+        AppInfoCardScale.ScaleY = 1.08;
 
         var bounce = new Storyboard();
         var sx = new DoubleAnimation { From = 0.92, To = 1.0, Duration = TimeSpan.FromMilliseconds(300), EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.6 } };
@@ -2897,10 +2958,13 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         try { await Task.Delay(2000, ct); } catch (OperationCanceledException) { return; }
         if (ct.IsCancellationRequested) return;
 
-        AppInfoCardScale.ScaleX = 0.95;
-        AppInfoCardScale.ScaleY = 1.05;
+        AppInfoCardScale.ScaleX = 1.0;
+        AppInfoCardScale.ScaleY = 1.0;
         ApplyLocalizedAppTitle();
         AppSubtitleText.Opacity = 1.0;
+
+        if (FastModeService.IsFastModeEnabled())
+            return; // 低配模式：跳过恢复动画，直接复位。
 
         var restore = new Storyboard();
         var rx = new DoubleAnimation { From = 0.95, To = 1.0, Duration = TimeSpan.FromMilliseconds(250), EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.3 } };

@@ -154,7 +154,7 @@
                                  </Border>
                                  <StackPanel VerticalAlignment="Center" Spacing="2">
                                      <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="常规" l:Uids.Uid="Settings_General_Title" />
-                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" Text="主题、更新、启动页面" l:Uids.Uid="Settings_General_Desc" />
+                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" Text="主题、更新、启动页面、低配模式" l:Uids.Uid="Settings_General_Desc" />
                                 </StackPanel>
                             </StackPanel>
                         </Expander.Header>
@@ -298,6 +298,23 @@
                                     </Grid>
                                 </Border>
 
+                                <Border x:Name="SettingsFastModeCard" Style="{StaticResource SettingsCardStyle}">
+                                    <Grid ColumnSpacing="16">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Style="{StaticResource IconBorderStyle}">
+                                            <FontIcon FontSize="18" Glyph="&#xE945;" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                                            <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="低配模式" l:Uids.Uid="Settings_FastMode_Title" />
+                                            <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" TextWrapping="Wrap" Text="禁用动画与启动预加载，降低老电脑资源占用" l:Uids.Uid="Settings_FastMode_Desc" />
+                                        </StackPanel>
+                                        <ToggleSwitch x:Name="FastModeToggle" Grid.Column="2" VerticalAlignment="Center" Toggled="FastModeToggle_Toggled" />
+                                    </Grid>
+                                </Border>
                                 <Border x:Name="SettingsRememberWindowCard" Style="{StaticResource SettingsCardStyle}">
                                     <Grid ColumnSpacing="16">
                                         <Grid.ColumnDefinitions>
