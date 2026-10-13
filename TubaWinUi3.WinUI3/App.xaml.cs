@@ -785,8 +785,21 @@ public partial class App : Application
         // 图标缓存清理与硬件盘点都不再抢启动窗口：图标清理延迟到空闲期执行（后台线程，
         // 内部是纯文件 IO + 线程安全缓存，不能留在 UI 线程上扫盘），
         // 硬件 WMI 盘点（20+ 条查询）延迟 10s 后台预热，打开硬件信息页时直接命中缓存。
-        _ = DelayThenRunAsync(TimeSpan.FromSeconds(15), () => Task.Run(() => ToolIconService.CleanExpiredCache()));
-        _ = DelayThenRunAsync(TimeSpan.FromSeconds(10), () => { HardwareInfoService.PreloadAsync(); return Task.CompletedTask; });
+        // 低配模式：跳过图标缓存清理与硬件 WMI 预热，避免冷启动抢盘/抢 CPU。
+        if (!FastModeService.IsFastModeEnabled())
+        {
+            _ = DelayThenRunAsync(TimeSpan.FromSeconds(15), () => Task.Run(() =>
+            {
+                if (FastModeService.IsFastModeEnabled()) return;
+                ToolIconService.CleanExpiredCache();
+            }));
+            _ = DelayThenRunAsync(TimeSpan.FromSeconds(10), () =>
+            {
+                if (FastModeService.IsFastModeEnabled()) return Task.CompletedTask;
+                HardwareInfoService.PreloadAsync();
+                return Task.CompletedTask;
+            });
+        }
         _ = Task.Run(() => ConfigManager.AutoMigratePathsIfNeeded());
 
         // 加速包（NPU/GPU 执行提供程序）的注册是进程级的，进程结束即失效，导致每次启动都要手动
@@ -795,40 +808,46 @@ public partial class App : Application
 
         // 规则：分类下没有工具就删除。启动时清理历史遗留的空白分类目录
         // （扫描放后台线程，删除与设置写入回 UI 线程）。
-        _ = DelayThenRunAsync(TimeSpan.FromSeconds(15), () => Task.Run(async () =>
+        // 低配模式：跳过历史空白分类清理（后台磁盘扫描）。
+        if (!FastModeService.IsFastModeEnabled())
         {
-            List<string> emptyCategories;
-            try
+            _ = DelayThenRunAsync(TimeSpan.FromSeconds(15), () => Task.Run(async () =>
             {
-                // 与首页共享 single-flight 扫描，避免冷启动并发 GetTools 重复扫盘。
-                await ToolCatalog.GetAllToolsAsync();
-                emptyCategories = ToolCatalog.FindEmptyCategories();
-            }
-            catch
-            {
-                return;
-            }
+                if (FastModeService.IsFastModeEnabled()) return;
 
-            if (emptyCategories.Count == 0 || MainWindow?.DispatcherQueue is null)
-                return;
-
-            MainWindow.DispatcherQueue.TryEnqueue(() =>
-            {
-                var removed = 0;
-                foreach (var name in emptyCategories)
+                List<string> emptyCategories;
+                try
                 {
-                    if (ToolCatalog.PruneCategoryIfEmpty(name))
-                        removed++;
+                    // 与首页共享 single-flight 扫描，避免冷启动并发 GetTools 重复扫盘。
+                    await ToolCatalog.GetAllToolsAsync();
+                    emptyCategories = ToolCatalog.FindEmptyCategories();
+                }
+                catch
+                {
+                    return;
                 }
 
-                if (removed > 0)
+                if (emptyCategories.Count == 0 || MainWindow?.DispatcherQueue is null)
+                    return;
+
+                MainWindow.DispatcherQueue.TryEnqueue(() =>
                 {
-                    ToolCatalog.InvalidateTagsCache();
-                    if (MainWindow is MainWindow mw)
-                        mw.RefreshToolCategories();
-                }
-            });
-        }));
+                    var removed = 0;
+                    foreach (var name in emptyCategories)
+                    {
+                        if (ToolCatalog.PruneCategoryIfEmpty(name))
+                            removed++;
+                    }
+
+                    if (removed > 0)
+                    {
+                        ToolCatalog.InvalidateTagsCache();
+                        if (MainWindow is MainWindow mw)
+                            mw.RefreshToolCategories();
+                    }
+                });
+            }));
+        }
 
         // 后端进程统一入口：按「主动拦截 + 游戏后台监控」两个功能的开关状态同步。
         // 有任一功能开启 → 拉起 NativeAOT 后端（独立常驻进程）；MSIX 沙箱下不支持。
@@ -887,13 +906,33 @@ public partial class App : Application
 
         if (!RuntimeHelper.IsPackagedContext)
         {
-            // 更新检查延后 10s 发起，避开启动窗口期的磁盘/网络竞争
-            _ = DelayThenRunAsync(TimeSpan.FromSeconds(10), CheckForToolUpdatesSilentAsync);
-            _ = DelayThenRunAsync(TimeSpan.FromSeconds(10), () => CheckForUpdateSilentAsync());
+            // 更新检查延后 10s 发起，避开启动窗口期的磁盘/网络竞争。
+            // 低配模式：跳过全部更新检查，避免启动期联网/扫盘。
+            if (!FastModeService.IsFastModeEnabled())
+            {
+                _ = DelayThenRunAsync(TimeSpan.FromSeconds(10), () =>
+                {
+                    if (FastModeService.IsFastModeEnabled()) return Task.CompletedTask;
+                    return CheckForToolUpdatesSilentAsync();
+                });
+                _ = DelayThenRunAsync(TimeSpan.FromSeconds(10), () =>
+                {
+                    if (FastModeService.IsFastModeEnabled()) return Task.CompletedTask;
+                    return CheckForUpdateSilentAsync();
+                });
+            }
         }
         else
         {
-            _ = DelayThenRunAsync(TimeSpan.FromSeconds(10), CheckForToolUpdatesSilentAsync);
+            // 低配模式：同样跳过工具更新检查。
+            if (!FastModeService.IsFastModeEnabled())
+            {
+                _ = DelayThenRunAsync(TimeSpan.FromSeconds(10), () =>
+                {
+                    if (FastModeService.IsFastModeEnabled()) return Task.CompletedTask;
+                    return CheckForToolUpdatesSilentAsync();
+                });
+            }
         }
 
         // 若用户已启用 Windows 搜索索引注册，启动时刷新快捷方式

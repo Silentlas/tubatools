@@ -1163,6 +1163,7 @@ public sealed partial class HomePage : Page, ILocalizablePage
 
     private static void AnimateFavoriteButton(FrameworkElement target)
     {
+        if (FastModeService.IsFastModeEnabled()) return;
         var visual = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(target);
         if (visual is null) return;
         var compositor = visual.Compositor;

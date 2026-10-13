@@ -1235,7 +1235,7 @@ public sealed partial class BatteryAnalyzerPage : Page
         _chartAnimTimer?.Stop();
         _chartAnimProgress = 0;
 
-        var totalSteps = 20;
+        var totalSteps = FastModeService.IsFastModeEnabled() ? 1 : 20;
         _chartAnimTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(25) };
         _chartAnimTimer.Tick += (_, _) =>
         {
@@ -1287,7 +1287,7 @@ public sealed partial class BatteryAnalyzerPage : Page
             });
         }
 
-        var totalSteps = 20;
+        var totalSteps = FastModeService.IsFastModeEnabled() ? 1 : 20;
         var animFrac = Math.Min(1.0, (double)_chartAnimProgress / totalSteps);
         var visibleCount = Math.Max(2, (int)(_visibleTrendData.Count * animFrac));
         var data = _visibleTrendData.Take(visibleCount).ToList();

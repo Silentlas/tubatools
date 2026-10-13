@@ -220,10 +220,11 @@
     声明了 Files/AssistStudio.Controls/icon.png 负载条目，但 lib 目录并未随包携带该文件。
     WinUI 的 AddPriPayloadFilesToCopyToOutputDirectoryItems 会把该条目加入输出复制列表，
     直接构建报 MSB3030。这里在构建期把包根部的 icon.png 幂等补位到声明路径。
+    NuGetPackageRoot 不保证带尾部分隔符（NUGET_PACKAGES 指向自定义包目录时即不带），故拼路径前先归一化。
   -->
   <Target Name="FixFieldCureMissingPriPayload" BeforeTargets="AddPriPayloadFilesToCopyToOutputDirectoryItems">
     <PropertyGroup>
-      <_FcPkgDir>$(NuGetPackageRoot)fieldcure.assiststudio.controls.winui\0.21.0\</_FcPkgDir>
+      <_FcPkgDir>$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))fieldcure.assiststudio.controls.winui\0.21.0\</_FcPkgDir>
       <_FcIconSrc>$(_FcPkgDir)icon.png</_FcIconSrc>
       <_FcIconDstNet8>$(_FcPkgDir)lib\net8.0-windows10.0.19041\AssistStudio.Controls\icon.png</_FcIconDstNet8>
       <_FcIconDstNet9>$(_FcPkgDir)lib\net9.0-windows10.0.19041\AssistStudio.Controls\icon.png</_FcIconDstNet9>
