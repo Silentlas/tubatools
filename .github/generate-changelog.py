@@ -45,7 +45,11 @@ try:
         data = json.loads(resp.read().decode("utf-8"))
     content = data["choices"][0]["message"]["content"]
 except Exception as e:
-    content = f"AI 生成更新日志失败: {e}\n请查看 git 历史获取详细变更信息。"
+    commit_log = read_file("commit_log.txt").strip()
+    if commit_log and commit_log != "- 首次发布":
+        content = "## 更新内容\n\n" + commit_log + f"\n\n> 注：AI 摘要生成失败（{e}），以上为本次变更的原始提交记录。"
+    else:
+        content = f"AI 生成更新日志失败: {e}\n请查看 git 历史获取详细变更信息。"
 
 with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
     f.write("result<<EOF\n")

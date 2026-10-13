@@ -429,7 +429,7 @@ jobs:
         id: hashes
         run: |
           cd release_files
-          echo "## SHA256 哈希值" > ../hash_table.md
+          echo "### SHA256 哈希值" > ../hash_table.md
           echo "" >> ../hash_table.md
           echo "| 文件 | SHA256 |" >> ../hash_table.md
           echo "|------|--------|" >> ../hash_table.md
@@ -453,7 +453,7 @@ jobs:
 
             > **官方网站**：https://tubawinui3.cn
             > **官方下载**：https://tubawinui3.cn/download
-            > **GitHub 仓库**：https://github.com/luolangaga/tubatool
+            > **GitHub 仓库**：https://github.com/luolangaga/tubatools
             >
             > ⚠️ 请认准上述官方渠道下载。任何其他网站提供的所谓"破解版"、"绿色版"、"精简版"均非官方发布，可能包含恶意软件！
 
@@ -472,4 +472,18 @@ jobs:
             | `Tools.zip` | 完整版工具内核包（商店版首次启动可选下载） |
             | `Tools_Lite.zip` | 精简版工具内核包（仅必要检测工具） |
 
-            $(cat hash_table.md)
+      # softprops/action-gh-release 不会展开 body 里的 $(cat ...)，哈希表在创建后追加
+      - name: Append SHA256 hashes to release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: v${{ inputs.version }}
+        run: |
+          REPO="${{ github.repository }}"
+          BODY=$(gh api "repos/$REPO/releases?per_page=100" --jq ".[] | select(.tag_name == \"$TAG\") | .body")
+          if [ -z "$BODY" ]; then
+            echo "::warning::未找到 $TAG 的 Release 正文，跳过追加哈希表"
+            exit 0
+          fi
+          printf '%s\n\n' "$BODY" > release_body.md
+          cat hash_table.md >> release_body.md
+          gh release edit "$TAG" --repo "$REPO" --notes-file release_body.md
