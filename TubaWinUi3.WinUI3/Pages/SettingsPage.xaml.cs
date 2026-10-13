@@ -28,7 +28,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
     private bool _isCheckingUpdate;
     private bool _isCheckingToolsBundle;
     private bool _compactModeInitializing;
-    private bool _fastModeInitializing;
     private bool _navLayoutInitializing;
     private bool _rememberWindowInitializing;
     private bool _closeToTrayInitializing;
@@ -124,7 +123,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         ["NavLayoutMode"] = "GeneralExpander",
         ["DefaultPage"] = "GeneralExpander",
         ["ShowFrequentRecommendations"] = "GeneralExpander",
-        ["FastMode"] = "GeneralExpander",
         ["RememberWindow"] = "GeneralExpander",
         ["CloseToTray"] = "GeneralExpander",
         ["Update"] = "GeneralExpander",
@@ -161,7 +159,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         ["NavLayoutMode"] = "SettingsNavLayoutCard",
         ["DefaultPage"] = "SettingsDefaultPageCard",
         ["ShowFrequentRecommendations"] = "SettingsShowFrequentCard",
-        ["FastMode"] = "SettingsFastModeCard",
         ["RememberWindow"] = "SettingsRememberWindowCard",
         ["CloseToTray"] = "SettingsCloseToTrayCard",
         ["Update"] = "SettingsUpdateCard",
@@ -215,7 +212,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         InitActiveInterceptToggle();
         InitLanguageComboBox();
         InitThemeSelector();
-        InitFastModeToggle();
         InitRememberWindowToggle();
         InitCloseToTrayToggle();
         InitUpdateSection();
@@ -586,19 +582,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
     {
         if (_showFrequentInitializing) return;
         AppSettings.Set(LaunchHistoryService.ShowFrequentRecommendationsSettingKey, ShowFrequentToggle.IsOn);
-    }
-
-    private void InitFastModeToggle()
-    {
-        _fastModeInitializing = true;
-        FastModeToggle.IsOn = FastModeService.IsFastModeEnabled();
-        _fastModeInitializing = false;
-    }
-
-    private void FastModeToggle_Toggled(object sender, RoutedEventArgs e)
-    {
-        if (_fastModeInitializing) return;
-        FastModeService.SetFastModeEnabled(FastModeToggle.IsOn);
     }
 
     private void InitRememberWindowToggle()
@@ -2673,20 +2656,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
 
     private void PlayRatingThanksFlourish()
     {
-        if (FastModeService.IsFastModeEnabled())
-        {
-            RatingThanksScrim.Opacity = 1;
-            RatingThanksCard.Opacity = 1;
-            RatingThanksCardTransform.ScaleX = 1;
-            RatingThanksCardTransform.ScaleY = 1;
-            RatingThanksCardTransform.TranslateY = 0;
-            RatingThanksBadgeTransform.ScaleX = 1;
-            RatingThanksBadgeTransform.ScaleY = 1;
-            RatingThanksBadgeTransform.Rotation = 0;
-            RatingThanksHalo.Opacity = 0.9;
-            return;
-        }
-
         var storyboard = new Storyboard();
         AddAnimation(storyboard, RatingThanksScrim, "Opacity", 1, 220, 0, new CubicEase { EasingMode = EasingMode.EaseOut });
         AddAnimation(storyboard, RatingThanksHalo, "Opacity", 0.9, 720, 180, new CubicEase { EasingMode = EasingMode.EaseOut });
@@ -2725,7 +2694,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
     private void SpawnRatingSparkles()
     {
         RatingThanksParticleCanvas.Children.Clear();
-        if (FastModeService.IsFastModeEnabled()) return;
 
         var badgeWidth = RatingThanksBadge.ActualWidth;
         var badgeHeight = RatingThanksBadge.ActualHeight;
@@ -2849,15 +2817,7 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
     private void OpenSourceButton_Click(object sender, RoutedEventArgs e)
     {
         DrawerOverlay.Visibility = Visibility.Visible;
-        if (FastModeService.IsFastModeEnabled())
-        {
-            DrawerOverlayBackground.Opacity = 1;
-            DrawerPanelTransform.X = 0;
-        }
-        else
-        {
-            DrawerOpenStoryboard.Begin();
-        }
+        DrawerOpenStoryboard.Begin();
     }
 
     private void DrawerCloseButton_Click(object sender, RoutedEventArgs e)
@@ -2872,13 +2832,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
 
     private void CloseDrawer()
     {
-        if (FastModeService.IsFastModeEnabled())
-        {
-            DrawerOverlay.Visibility = Visibility.Collapsed;
-            DrawerOverlayBackground.Opacity = 0;
-            DrawerPanelTransform.X = 420;
-            return;
-        }
         DrawerCloseStoryboard.Completed += OnDrawerCloseCompleted;
         DrawerCloseStoryboard.Begin();
     }
@@ -2913,8 +2866,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
 
     private void AppInfoCard_Tapped(object sender, TappedRoutedEventArgs e)
     {
-        if (FastModeService.IsFastModeEnabled()) return;
-
         _easterEggCts?.Cancel();
         _easterEggCts = new CancellationTokenSource();
         var ct = _easterEggCts.Token;

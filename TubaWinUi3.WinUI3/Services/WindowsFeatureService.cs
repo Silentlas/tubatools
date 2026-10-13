@@ -21,6 +21,9 @@ public sealed record FeatureFlagEntry(
     bool IsExperiment,
     bool HasConfig)
 {
+    public FeatureState? RuntimeState { get; init; }
+    public FeatureState? BootState { get; init; }
+
     /// <summary>用户可读的优先级名（对照 ViveTool Priority 枚举）。</summary>
     public string PriorityText => Priority switch
     {
@@ -536,6 +539,16 @@ public static unsafe class WindowsFeatureService
         return (entries, storeCount, enabledCount);
     }
 
+    /// <summary>合并当前配置、重启配置与字典，同一功能仅展示一次。</summary>
+    public static List<FeatureFlagEntry> QueryUnifiedFeatures()
+    {
+        var (runtime, _) = QueryAllConfigurations(CfgTypeRuntime);
+        var (boot, _) = QueryAllConfigurations(CfgTypeBoot);
+        static FeatureFlagEntry Convert(RtlFeatureConfiguration c) => new(c.FeatureId, null,
+            c.Priority, (FeatureState)c.EnabledState, c.IsWexp, true);
+        return WindowsFeatureCatalog.Merge(runtime.Select(Convert), boot.Select(Convert), LoadDictionary());
+    }
+
     /// <summary>Boot 存储是否有待重启生效的配置（对照 nexbox status.boot_pending / ViVeTool）。</summary>
     public static unsafe bool IsBootPending()
     {
@@ -566,8 +579,15 @@ public static unsafe class WindowsFeatureService
         SetRuntimeConfigurations([update]);
         if (persistBoot)
         {
-            SetBootConfigurationsInRegistry([update]);
-            UpdateLkgStatus();
+            try
+            {
+                SetBootConfigurationsInRegistry([update]);
+                UpdateLkgStatus();
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("当前配置已更新，但保存重启后的配置失败，请刷新检查后重试。" + ex.Message, ex);
+            }
         }
         return persistBoot
             ? $"功能 {featureId} 已更新（重启后保持生效）"
@@ -580,8 +600,15 @@ public static unsafe class WindowsFeatureService
         ValidatePriority(priority);
         var reset = RtlFeatureConfigurationUpdate.NewReset(featureId, priority);
         SetRuntimeConfigurations([reset]);
-        SetBootConfigurationsInRegistry([reset]);
-        UpdateLkgStatus();
+        try
+        {
+            SetBootConfigurationsInRegistry([reset]);
+            UpdateLkgStatus();
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException("当前 User 配置已移除，但重启后的配置重置失败，请刷新检查后重试。" + ex.Message, ex);
+        }
         return $"功能 {featureId} 的自定义配置已重置（恢复系统默认）";
     }
 }

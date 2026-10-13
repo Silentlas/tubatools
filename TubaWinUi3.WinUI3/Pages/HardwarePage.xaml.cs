@@ -271,7 +271,6 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
 
     private void Card_PointerEntered(object sender, PointerRoutedEventArgs e)
     {
-        if (FastModeService.IsFastModeEnabled()) return;
         if (sender is not Border border) return;
         var sb = new Storyboard();
         var scaleX = new DoubleAnimation { To = 1.02, Duration = TimeSpan.FromMilliseconds(120), EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
@@ -287,7 +286,6 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
 
     private void Card_PointerExited(object sender, PointerRoutedEventArgs e)
     {
-        if (FastModeService.IsFastModeEnabled()) return;
         if (sender is not Border border) return;
         var sb = new Storyboard();
         var scaleX = new DoubleAnimation { To = 1.0, Duration = TimeSpan.FromMilliseconds(180), EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
@@ -305,15 +303,8 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
     {
         if (_dataLoaded)
         {
-            if (FastModeService.IsFastModeEnabled())
-            {
-                SetElementStatesToExit();
-            }
-            else
-            {
-                ExitStoryboard.Begin();
-                await Task.Delay(200);
-            }
+            ExitStoryboard.Begin();
+            await Task.Delay(200);
         }
 
         SetLoading(true);
@@ -374,42 +365,15 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
         ModelText.Text = summary.FirstOrDefault(item => item.Label == "设备型号")?.Value ?? LocalizationService.L("Hw_Unknown", "未知");
         SystemText.Text = system.FirstOrDefault(item => item.Label == "系统")?.Value ?? LocalizationService.L("Hw_Unknown", "未知");
         UpdateUptime();
-        _animatingDetails = !FastModeService.IsFastModeEnabled();
+        _animatingDetails = true;
         DetailsRepeater.ItemsSource = details;
 
         CpuzBadge.Visibility = details.Any(it => it.IsVerified)
             ? Visibility.Visible
             : Visibility.Collapsed;
 
-        if (FastModeService.IsFastModeEnabled())
-        {
-            SetElementStatesToVisible();
-        }
-        else
-        {
-            EntranceStoryboard.Begin();
-        }
+        EntranceStoryboard.Begin();
         _dataLoaded = true;
-    }
-
-    private void SetElementStatesToVisible()
-    {
-        HeaderPanel.Opacity = 1;
-        HeaderPanel.RenderTransform = new TranslateTransform { Y = 0 };
-        MetricsPanel.Opacity = 1;
-        MetricsPanel.RenderTransform = new TranslateTransform { Y = 0 };
-        Card1.RenderTransform = new ScaleTransform { ScaleX = 1, ScaleY = 1 };
-        Card2.RenderTransform = new ScaleTransform { ScaleX = 1, ScaleY = 1 };
-        Card3.RenderTransform = new ScaleTransform { ScaleX = 1, ScaleY = 1 };
-        DetailsPanel.Opacity = 1;
-        DetailsPanel.RenderTransform = new TranslateTransform { Y = 0 };
-    }
-
-    private void SetElementStatesToExit()
-    {
-        HeaderPanel.Opacity = 0;
-        MetricsPanel.Opacity = 0;
-        DetailsPanel.Opacity = 0;
     }
 
     private void SetLoading(bool isLoading)

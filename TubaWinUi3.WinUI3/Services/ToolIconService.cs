@@ -27,6 +27,8 @@ public static class ToolIconService
     };
 
     private static readonly LruCache<string, string> _memoryCache = new(512);
+    // Shared by all pages, rather than allowing each navigation to start 4–8 extractors.
+    private static readonly SemaphoreSlim ExtractionGate = new(1);
 
     public static string GetCategoryGlyph(string category) => category switch
     {
@@ -93,124 +95,111 @@ public static class ToolIconService
         return iconPath;
     }
 
-    public static async Task<string?> ExtractIconToCacheAsync(string toolPath)
+    public static async Task<string?> ExtractIconToCacheAsync(string toolPath, CancellationToken cancellationToken = default)
     {
-        if (!File.Exists(toolPath))
-            return null;
-
         var extension = Path.GetExtension(toolPath);
         if (!extension.Equals(".exe", StringComparison.OrdinalIgnoreCase) &&
             !extension.Equals(".lnk", StringComparison.OrdinalIgnoreCase))
             return null;
 
-        return await Task.Run(() =>
+        await ExtractionGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
         {
-            Directory.CreateDirectory(CacheRoot);
-            var cacheKey = GetCacheKey(toolPath);
-            var iconPath = Path.Combine(CacheRoot, $"{cacheKey}.png");
-
-            if (File.Exists(iconPath))
+            return await Task.Run(() =>
             {
-                var age = DateTime.UtcNow - File.GetLastWriteTimeUtc(iconPath);
-                if (age < CacheMaxAge && !IsSourceStale(toolPath, iconPath))
-                {
-                    _memoryCache.Set(cacheKey, iconPath);
-                    return iconPath;
-                }
+                cancellationToken.ThrowIfCancellationRequested();
+                // Recheck after acquiring the gate: another page may already have extracted it.
+                var cached = GetCachedIconPath(toolPath);
+                if (cached is not null) return cached;
+                if (!File.Exists(toolPath)) return null;
+                Directory.CreateDirectory(CacheRoot);
+                var cacheKey = GetCacheKey(toolPath);
+                var iconPath = Path.Combine(CacheRoot, $"{cacheKey}.png");
 
-                try { File.Delete(iconPath); } catch { }
-                _memoryCache.Remove(cacheKey);
-            }
-
-            var bundledIconPath = Path.Combine(BundledCacheRoot, $"{cacheKey}.png");
-            if (File.Exists(bundledIconPath) && !IsSourceStale(toolPath, bundledIconPath))
-            {
                 try
                 {
-                    File.Copy(bundledIconPath, iconPath, true);
+                    using var icon = Icon.ExtractAssociatedIcon(toolPath);
+                    if (icon is null)
+                        return null;
+
+                    using var bitmap = icon.ToBitmap();
+                    bitmap.Save(iconPath, System.Drawing.Imaging.ImageFormat.Png);
                     _memoryCache.Set(cacheKey, iconPath);
                     return iconPath;
                 }
-                catch { }
-            }
-
-            try
-            {
-                using var icon = Icon.ExtractAssociatedIcon(toolPath);
-                if (icon is null)
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Unable to extract icon for {toolPath}: {ex.Message}");
                     return null;
-
-                using var bitmap = icon.ToBitmap();
-                bitmap.Save(iconPath, System.Drawing.Imaging.ImageFormat.Png);
-                _memoryCache.Set(cacheKey, iconPath);
-                return iconPath;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"Unable to extract icon for {toolPath}: {ex.Message}");
-                return null;
-            }
-        });
+                }
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        finally { ExtractionGate.Release(); }
     }
 
     public static async Task LoadIconsAsync(
         IReadOnlyList<ToolItem> tools,
-        Microsoft.UI.Dispatching.DispatcherQueue? dispatcher)
+        Microsoft.UI.Dispatching.DispatcherQueue? dispatcher,
+        CancellationToken cancellationToken = default)
     {
-        var itemsToLoad = tools
-            .Where(t => t.IconPath is null && !string.IsNullOrWhiteSpace(t.Path))
-            .Where(t =>
-            {
-                var ext = System.IO.Path.GetExtension(t.Path);
-                return ext.Equals(".exe", StringComparison.OrdinalIgnoreCase) ||
-                       ext.Equals(".lnk", StringComparison.OrdinalIgnoreCase);
-            })
-            .ToList();
-
-        if (itemsToLoad.Count == 0)
-            return;
-
-        // 缓存命中检查移入后台线程：每个工具 8~9 次同步文件系统调用
-        // （File.Exists / GetLastWriteTimeUtc / CreateDirectory），在 UI 线程
-        // 串行执行 142 个 exe 会造成 ~1200 次同步 syscall 卡顿。
-        // IconPath 为 INotifyPropertyChanged，绑定自动 marshal 到 UI 线程
-        // （与下方提取完成后的赋值模式一致），无需回到 UI 线程重查。
-        var needExtract = await Task.Run(() =>
+        try
         {
-            var extract = new List<ToolItem>();
-            foreach (var tool in itemsToLoad)
-            {
-                var cached = GetCachedIconPath(tool.Path);
-                if (cached is not null)
-                    tool.IconPath = cached;
-                else
-                    extract.Add(tool);
-            }
-            return extract;
-        });
-
-        if (needExtract.Count == 0)
-            return;
-
-        var semaphore = new SemaphoreSlim(Environment.ProcessorCount >= 4 ? 8 : 4);
-        var tasks = needExtract.Select(async tool =>
-        {
-            await semaphore.WaitAsync();
-            try
-            {
-                var iconPath = await ExtractIconToCacheAsync(tool.Path);
-                if (iconPath is not null)
+            var itemsToLoad = tools
+                .Where(t => t.IconPath is null && !string.IsNullOrWhiteSpace(t.Path))
+                .Where(t =>
                 {
-                    if (dispatcher is not null)
-                        dispatcher.TryEnqueue(() => tool.IconPath = iconPath);
-                    else
-                        tool.IconPath = iconPath;
-                }
-            }
-            finally { semaphore.Release(); }
-        });
+                    var ext = System.IO.Path.GetExtension(t.Path);
+                    return ext.Equals(".exe", StringComparison.OrdinalIgnoreCase) ||
+                           ext.Equals(".lnk", StringComparison.OrdinalIgnoreCase);
+                })
+                .ToList();
 
-        await Task.WhenAll(tasks);
+            if (itemsToLoad.Count == 0)
+                return;
+
+            // 缓存命中检查移入后台线程：每个工具 8~9 次同步文件系统调用
+            // （File.Exists / GetLastWriteTimeUtc / CreateDirectory），在 UI 线程
+            // 串行执行 142 个 exe 会造成 ~1200 次同步 syscall 卡顿。
+            // 仅图标路径的发布回 UI 线程，用低优先级让输入/滚动先得到处理。
+            var needExtract = await Task.Run(() =>
+            {
+                var extract = new List<ToolItem>();
+                foreach (var tool in itemsToLoad)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var cached = GetCachedIconPath(tool.Path);
+                    if (cached is not null)
+                        Publish(tool, cached);
+                    else
+                        extract.Add(tool);
+                }
+                return extract;
+            }, cancellationToken).ConfigureAwait(false);
+
+            if (needExtract.Count == 0)
+                return;
+
+            // A sequential producer avoids creating a task for every off-screen tool.
+            foreach (var tool in needExtract)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var iconPath = await ExtractIconToCacheAsync(tool.Path, cancellationToken).ConfigureAwait(false);
+                if (iconPath is not null) Publish(tool, iconPath);
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { }
+        catch (Exception ex) { Debug.WriteLine($"[ToolIcon] Loading failed: {ex.Message}"); }
+
+        void Publish(ToolItem tool, string path)
+        {
+            if (cancellationToken.IsCancellationRequested) return;
+            if (dispatcher is not null)
+                dispatcher.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+                {
+                    if (!cancellationToken.IsCancellationRequested) tool.IconPath = path;
+                });
+            else tool.IconPath = path;
+        }
     }
 
     public static void CleanExpiredCache()

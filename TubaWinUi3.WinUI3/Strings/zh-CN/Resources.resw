@@ -458,12 +458,6 @@
   <data name="Search_SettingShowFrequentDesc" xml:space="preserve">
     <value>在常用页面显示按使用频率排序的推荐工具</value>
   </data>
-  <data name="Search_SettingFastMode" xml:space="preserve">
-    <value>快速模式</value>
-  </data>
-  <data name="Search_SettingFastModeDesc" xml:space="preserve">
-    <value>禁用所有动画，提升响应速度</value>
-  </data>
   <data name="Search_SettingWatermark" xml:space="preserve">
     <value>截图水印</value>
   </data>
@@ -1191,12 +1185,6 @@
     <value>已保存到：
 {0}</value>
   </data>
-  <data name="Settings_FastMode_Desc.Text" xml:space="preserve">
-    <value>禁用所有动画，提升响应速度</value>
-  </data>
-  <data name="Settings_FastMode_Title.Text" xml:space="preserve">
-    <value>快速模式</value>
-  </data>
   <data name="Settings_Feedback_Button" xml:space="preserve">
     <value>提交反馈</value>
   </data>
@@ -1248,7 +1236,7 @@
     <value>提交</value>
   </data>
   <data name="Settings_General_Desc.Text" xml:space="preserve">
-    <value>主题、更新、启动页面、快速模式</value>
+    <value>主题、更新、启动页面</value>
   </data>
   <data name="Settings_General_Title.Text" xml:space="preserve">
     <value>常规</value>

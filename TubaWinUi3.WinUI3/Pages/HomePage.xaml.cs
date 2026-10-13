@@ -233,6 +233,8 @@ public sealed partial class HomePage : Page, ILocalizablePage
             // 缓存命中不重载数据时，卡片文本仍可能过期（切换界面语言后回来）——
             // 绑定值不变不会自动重求值，需主动通知（分类显示名、启动按钮文案）。
             RefreshToolCardTexts();
+            _loadCts = new CancellationTokenSource();
+            StartIconLoading(_tools.ToList());
             if (_highlightToolPath is not null)
             {
                 StartHighlight(_highlightToolPath);
@@ -258,6 +260,8 @@ public sealed partial class HomePage : Page, ILocalizablePage
         base.OnNavigatedFrom(e);
         ExitEditMode(); // 离开页面时退出编辑排序并兜底落盘
         UnsubscribeStaticEvents();
+        _loadCts?.Cancel();
+        _highlightCts?.Cancel();
     }
 
     /// <summary>语言切换后刷新自绘文本（打了 Uid 的控件由 WinUI3Localizer 自动更新）。</summary>
@@ -1151,7 +1155,6 @@ public sealed partial class HomePage : Page, ILocalizablePage
 
     private static void AnimateFavoriteButton(FrameworkElement target)
     {
-        if (FastModeService.IsFastModeEnabled()) return;
         var visual = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(target);
         if (visual is null) return;
         var compositor = visual.Compositor;
@@ -1195,9 +1198,8 @@ public sealed partial class HomePage : Page, ILocalizablePage
     private void StartIconLoading(IReadOnlyList<ToolItem> tools)
     {
         if (tools.Count == 0) return;
-        _loadCts?.Cancel();
         var ct = _loadCts?.Token ?? CancellationToken.None;
-        _ = ToolIconService.LoadIconsAsync(tools, DispatcherQueue);
+        _ = ToolIconService.LoadIconsAsync(tools, DispatcherQueue, ct);
         _ = CheckWingetInstallStatusAsync(tools, ct);
     }
 

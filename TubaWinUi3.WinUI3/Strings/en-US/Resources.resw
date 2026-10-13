@@ -458,12 +458,6 @@
   <data name="Search_SettingShowFrequentDesc" xml:space="preserve">
     <value>Show frequently used tools on the Favorites page</value>
   </data>
-  <data name="Search_SettingFastMode" xml:space="preserve">
-    <value>Fast mode</value>
-  </data>
-  <data name="Search_SettingFastModeDesc" xml:space="preserve">
-    <value>Disable all animations for faster response</value>
-  </data>
   <data name="Search_SettingWatermark" xml:space="preserve">
     <value>Screenshot watermark</value>
   </data>
@@ -1179,12 +1173,6 @@
   <data name="Settings_ExportSavedTo" xml:space="preserve">
     <value>Saved to:`n{0}</value>
   </data>
-  <data name="Settings_FastMode_Desc.Text" xml:space="preserve">
-    <value>Disable all animations for faster response</value>
-  </data>
-  <data name="Settings_FastMode_Title.Text" xml:space="preserve">
-    <value>Fast mode</value>
-  </data>
   <data name="Settings_Feedback_Button" xml:space="preserve">
     <value>Submit feedback</value>
   </data>
@@ -1234,7 +1222,7 @@
     <value>Submit</value>
   </data>
   <data name="Settings_General_Desc.Text" xml:space="preserve">
-    <value>Theme, updates, startup page, fast mode</value>
+    <value>Theme, updates, startup page</value>
   </data>
   <data name="Settings_General_Title.Text" xml:space="preserve">
     <value>General</value>

@@ -1,112 +1,68 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Security.Principal;
 using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Controls.Primitives;
-using Microsoft.UI.Xaml.Media;
 using TubaWinUi3.Services;
-using Windows.UI;
 
 namespace TubaWinUi3.Pages;
 
-/// <summary>功能开关行视图模型（nexbox FeatureFlagEntry 的展示层映射）。</summary>
-public sealed class FeatureRowVm
+/// <summary>保留行实例，刷新配置时只通知属性变化，避免列表重置滚动位置。</summary>
+public sealed class FeatureRowVm : INotifyPropertyChanged
 {
+    private FeatureFlagEntry _entry;
+    private bool _isAdmin;
+    public FeatureRowVm(FeatureFlagEntry entry, bool isAdmin) { _entry = entry; _isAdmin = isAdmin; }
     public FeatureRowVm Self => this;
-    public required uint FeatureId { get; init; }
-    /// <summary>字典名；无名字时回退编号文案（nexbox：name ?? id）。</summary>
-    public required string DisplayName { get; init; }
-    public required string IdText { get; init; }
-    public required string StateText { get; init; }
-    public required SolidColorBrush StateBrush { get; init; }
-    public required SolidColorBrush StateBackground { get; init; }
-    public required string ExperimentText { get; init; }
-    public required SolidColorBrush ExperimentBrush { get; init; }
-    public required SolidColorBrush ExperimentBackground { get; init; }
-    /// <summary>字典命中但无配置的条目不展示「实验功能 / 系统覆盖」标签。</summary>
-    public required Visibility ExperimentVisibility { get; init; }
-    public required string PriorityText { get; init; }
-    /// <summary>已启用时禁用「启用」按钮（nexbox：disabled = has_config && enabled_state===2）。</summary>
-    public required bool CanEnable { get; init; }
-    /// <summary>已禁用时禁用「禁用」按钮。</summary>
-    public required bool CanDisable { get; init; }
-    /// <summary>仅系统已有自定义配置时可用「重置」（nexbox：disabled = !has_config）。</summary>
-    public required bool CanReset { get; init; }
-    public required string FlyoutTitle { get; init; }
-    public required string FlyoutDesc { get; init; }
-    public required FeatureState State { get; init; }
+    public uint FeatureId => _entry.FeatureId;
+    public string DisplayName => _entry.Name ?? $"功能 {FeatureId}";
+    public string ActionLabel => $"启用或禁用功能 {FeatureId}：{DisplayName}";
+    public string IdText => $"#{FeatureId}";
+    public string StateText => WindowsFeaturePage.StateLabel(_entry.RuntimeState);
+    public string RestartText => $"重启后的配置：{WindowsFeaturePage.StateLabel(_entry.BootState)}";
+    public Visibility RestartVisibility => _entry.RuntimeState != _entry.BootState ? Visibility.Visible : Visibility.Collapsed;
+    // 开关表示保存的目标配置；当前与目标不一致时，在行内说明重启后的配置。
+    public bool IsOn => (_entry.BootState ?? _entry.RuntimeState) == FeatureState.Enabled;
+    public bool CanToggle => _isAdmin;
+    public bool CanReset => _isAdmin && _entry.HasConfig;
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public void Apply(FeatureFlagEntry entry, bool isAdmin)
+    {
+        _entry = entry;
+        _isAdmin = isAdmin;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(null));
+    }
 }
 
-/// <summary>
-/// Windows 隐藏功能页：ID 获取逻辑完全对照 nexbox（gitcode.com/MuLiuSaMa/nexbox，同为 ViVe 移植）——
-/// 总列表 = 查询所选存储（运行时 / 引导）的全部配置、字典补名、按功能 ID 升序，
-/// 单次查询上限 500 条、每批展示 100 条「加载更多」；
-/// 搜索 = 独立提交的查询（打字不触发，回车 / 按钮提交）：按 ID / 名称过滤配置存储，
-/// 并把字典命中但当前无配置的条目补充进来（标记「未配置」）；
-/// 浏览态（无搜索词）默认仅显示字典可识别名称的条目（namedOnly）。
-/// 查询逻辑见 WindowsFeatureService.QueryFeatures。
-/// </summary>
+/// <summary>统一功能目录、名称/ID 搜索与批量 ID 操作。</summary>
 public sealed partial class WindowsFeaturePage : Page
 {
-    // 语义状态色（跟随系统主题，经 ThemeColors 取官方 SystemFillColor* 语义色）
-    private static Color SuccessGreen => ThemeColors.AccentGreen;
-    private static Color CautionAmber => ThemeColors.AccentOrange;
-    private static Color CriticalRed => ThemeColors.AccentRed;
-    private static Color NeutralGray => ThemeColors.Neutral;
-
-    /// <summary>单次查询条数上限（nexbox QUERY_LIMIT）。</summary>
-    private const int QueryLimit = WindowsFeatureService.DefaultQueryLimit;
-    /// <summary>每批展示条数，超出后「加载更多」（nexbox PAGE_SIZE）。</summary>
-    private const int PageSize = 100;
-
     private Dictionary<uint, string> _dictionary = new();
     private bool _busy;
-    private bool _isAdmin = true;
 
-    // ── 查询状态（nexbox 同款：store / search / namedOnly / persistBoot） ──
-    /// <summary>当前查询的存储（nexbox store，默认 runtime）。</summary>
-    private string _store = WindowsFeatureService.StoreRuntime;
-    /// <summary>已提交的搜索词；空 = 浏览态（nexbox search，仅提交时更新）。</summary>
+    private bool _isAdmin = true;
     private string _search = string.Empty;
-    /// <summary>浏览态仅显示有名称条目（nexbox namedOnly，默认开）。</summary>
     private bool _namedOnly = true;
-    /// <summary>启用/禁用是否持久化到 Boot 存储（nexbox persistBoot，默认开）。</summary>
-    private bool _persistBoot = true;
+    private List<FeatureFlagEntry> _catalog = new();
 
     /// <summary>当前查询返回的全部行（已含字典补充项）。</summary>
     private List<FeatureRowVm> _rows = new();
-    /// <summary>最近一次查询的原始条目，主题切换后按新主题重染色（代码构建的画刷不随主题刷新）。</summary>
-    private List<FeatureFlagEntry> _lastEntries = new();
-    /// <summary>当前展示到的条数（nexbox visibleCount，从 PAGE_SIZE 起步）。</summary>
-    private int _visibleCount = PageSize;
+    private FeatureIncrementalCollection _visibleRows;
 
     public WindowsFeaturePage()
     {
         InitializeComponent();
-        // 代码构建的画刷不会随主题自动刷新，切换主题后按缓存条目重渲染
-        ActualThemeChanged += (_, _) =>
-        {
-            if (_lastEntries.Count == 0)
-                return;
-            _rows = _lastEntries.Select(BuildRow).ToList();
-            RenderRows();
-        };
-        // 先置默认值再挂事件，避免初始化时触发 Toggled 引发多余刷新
-        NamedOnlyToggle.IsOn = true;
-        NamedOnlyToggle.Toggled += NamedOnlyToggle_Toggled;
-        PersistBootToggle.IsOn = true;
-        PersistBootToggle.Toggled += PersistBootToggle_Toggled;
-        RuntimeStoreButton.IsChecked = true;
+        _visibleRows = new FeatureIncrementalCollection(_rows, DispatcherQueue);
+        FeatureList.ItemsSource = _visibleRows;
     }
 
     // ───────────────────────────── 初始化 / 清理 ─────────────────────────────
 
     private void WindowsFeaturePage_Loaded(object sender, RoutedEventArgs e) => _ = LoadAsync();
 
-    private static SolidColorBrush Brush(Color color) => new(color);
 
     private static bool IsCurrentUserAdmin() =>
         new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
@@ -116,7 +72,7 @@ public sealed partial class WindowsFeaturePage : Page
     private async Task LoadAsync()
     {
         if (_busy) return;
-        _busy = true;
+        SetBusy(true);
         LoadingPanel.Visibility = Visibility.Visible;
         ContentPanel.Visibility = Visibility.Collapsed;
         MissingPanel.Visibility = Visibility.Collapsed;
@@ -151,7 +107,7 @@ public sealed partial class WindowsFeaturePage : Page
         }
         finally
         {
-            _busy = false;
+            SetBusy(false);
         }
     }
 
@@ -160,12 +116,14 @@ public sealed partial class WindowsFeaturePage : Page
     /// <summary>刷新统计与列表：nexbox refresh = status + feature_flags_query 同款重查。</summary>
     private async Task RefreshCoreAsync()
     {
-        var queryTask = Task.Run(() => WindowsFeatureService.QueryFeatures(_store, _search, _namedOnly, QueryLimit));
+        var queryTask = Task.Run(() => WindowsFeatureService.QueryUnifiedFeatures());
         var buildTask = Task.Run(WindowsFeatureService.GetOsBuild);
         var bootPendingTask = Task.Run(WindowsFeatureService.IsBootPending);
         await Task.WhenAll(queryTask, buildTask, bootPendingTask);
 
-        var (entries, storeCount, storeEnabled) = queryTask.Result;
+        _catalog = queryTask.Result;
+        var storeCount = _catalog.Count(e => e.HasConfig);
+        var storeEnabled = _catalog.Count(e => e.RuntimeState == FeatureState.Enabled);
         BuildValue.Text = buildTask.Result > 0 ? buildTask.Result.ToString() : "--";
         DictValue.Text = _dictionary.Count.ToString("N0");
         ConfiguredValue.Text = storeCount.ToString("N0");
@@ -175,17 +133,32 @@ public sealed partial class WindowsFeaturePage : Page
         DictMissingBar.Visibility = _dictionary.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         NotAdminBar.Visibility = _isAdmin ? Visibility.Collapsed : Visibility.Visible;
 
-        _lastEntries = entries;
-        _rows = _lastEntries.Select(BuildRow).ToList();
-        _visibleCount = PageSize;
-        RenderRows();
+        ApplyFilter(preserveView: true);
+    }
+
+    private void ApplyFilter(bool preserveView = false)
+    {
+        var entries = WindowsFeatureCatalog.Filter(_catalog, _search, _namedOnly);
+        if (preserveView && entries.Select(e => e.FeatureId).SequenceEqual(_rows.Select(r => r.FeatureId)))
+        {
+            for (var i = 0; i < entries.Count; i++) _rows[i].Apply(entries[i], _isAdmin);
+            UpdateListStats();
+            return;
+        }
+        _rows = entries.Select(e => new FeatureRowVm(e, _isAdmin)).ToList();
+        _visibleRows.BatchLoaded -= UpdateListStats;
+        _visibleRows = new FeatureIncrementalCollection(_rows, DispatcherQueue);
+        _visibleRows.BatchLoaded += UpdateListStats;
+        // 只有搜索条件/成员变化才重建数据源；加载下一批及配置刷新都保留原集合。
+        FeatureList.ItemsSource = _visibleRows;
+        UpdateListStats();
     }
 
     /// <summary>刷新护栏：busy 防重入 + 错误弹条。</summary>
     private async Task RunRefreshAsync()
     {
         if (_busy) return;
-        _busy = true;
+        SetBusy(true);
         try
         {
             await RefreshCoreAsync();
@@ -198,214 +171,164 @@ public sealed partial class WindowsFeaturePage : Page
         }
         finally
         {
-            _busy = false;
+            SetBusy(false);
         }
     }
 
-    /// <summary>按 _visibleCount 分批展示（nexbox：visibleEntries = entries.slice(0, visibleCount)）。</summary>
-    private void RenderRows()
+    private void UpdateListStats()
     {
-        FeatureList.ItemsSource = _rows.Take(_visibleCount).ToList();
-
-        var stats = $"共 {_rows.Count:N0} 条";
-        if (_rows.Count >= QueryLimit)
-            stats += $"（已达单次查询上限 {QueryLimit} 条，可细化搜索条件）";
-        ListStats.Text = stats;
-
+        ListStats.Text = $"共 {_rows.Count:N0} 条 · 已显示 {_visibleRows.Count:N0} 条";
         NoResultsText.Text = _search.Length == 0
-            ? "当前存储中没有可显示的配置"
+            ? "没有可显示的功能，请尝试关闭名称筛选"
             : $"未找到与「{_search}」匹配的功能";
         NoResultsPanel.Visibility = _rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-        LoadMoreButton.Visibility = _visibleCount < _rows.Count ? Visibility.Visible : Visibility.Collapsed;
     }
 
     // ───────────────────────────── 搜索（nexbox submitSearch） ─────────────────────────────
 
-    private void SearchButton_Click(object sender, RoutedEventArgs e) => SubmitSearch();
-
-    /// <summary>打字不触发查询（nexbox 同款：仅回车 / 点击搜索按钮提交），此处只保留事件占位。</summary>
-    private void SearchBox_TextChanged(AutoSuggestBox sender, AutoSuggestBoxTextChangedEventArgs args)
-    {
-    }
 
     /// <summary>回车提交（AutoSuggestBox 无候选列表时回车即 QuerySubmitted）。</summary>
     private void SearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args) => SubmitSearch();
 
     /// <summary>提交搜索：打字不触发查询，仅回车 / 点击搜索按钮时提交（nexbox 同款）。</summary>
-    private async void SubmitSearch()
+    private void SubmitSearch()
     {
-        var term = SearchBox.Text.Trim();
-        if (term == _search)
-            return;
-        _search = term;
-        await RunRefreshAsync();
+        _search = SearchBox.Text.Trim();
+        ApplyFilter();
     }
 
-    // ───────────────────────────── 存储切换 / 开关 ─────────────────────────────
-
-    /// <summary>存储切换（nexbox store runtime/boot）：重新查询所选存储。</summary>
-    private void StoreButton_Click(object sender, RoutedEventArgs e)
+    private void NamedOnlyToggle_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not ToggleButton clicked)
-            return;
-        var target = ReferenceEquals(clicked, BootStoreButton)
-            ? WindowsFeatureService.StoreBoot
-            : WindowsFeatureService.StoreRuntime;
-        if (target == _store)
-        {
-            clicked.IsChecked = true; // 不允许两个都弹起
-            return;
-        }
-        _store = target;
-        RuntimeStoreButton.IsChecked = ReferenceEquals(RuntimeStoreButton, clicked);
-        BootStoreButton.IsChecked = ReferenceEquals(BootStoreButton, clicked);
-        _ = RunRefreshAsync();
-    }
-
-    private void NamedOnlyToggle_Toggled(object sender, RoutedEventArgs e)
-    {
-        _namedOnly = NamedOnlyToggle.IsOn;
-        _ = RunRefreshAsync();
-    }
-
-    private void PersistBootToggle_Toggled(object sender, RoutedEventArgs e)
-    {
-        _persistBoot = PersistBootToggle.IsOn;
-    }
-
-    private void LoadMoreButton_Click(object sender, RoutedEventArgs e)
-    {
-        _visibleCount += PageSize;
-        RenderRows();
+        _namedOnly = NamedOnlyToggle.IsChecked == true;
+        ApplyFilter();
     }
 
     private void RefreshButton_Click(object sender, RoutedEventArgs e) => _ = RunRefreshAsync();
 
-    // ───────────────────────────── 行构建 ─────────────────────────────
-
-    private FeatureRowVm BuildRow(FeatureFlagEntry entry)
+    internal static string StateLabel(FeatureState? state) => state switch
     {
-        var hasConfig = entry.HasConfig;
-        var state = entry.State;
-        var display = entry.Name ?? $"功能 {entry.FeatureId}";
-
-        // 语义色按主题解析一次，浅色底纹由该基色派生（alpha 与主题无关）
-        var success = SuccessGreen;
-        var critical = CriticalRed;
-        var caution = CautionAmber;
-        var neutral = NeutralGray;
-
-        var (stateText, stateBrush, stateBg) = state switch
-        {
-            FeatureState.Enabled => ("已启用", Brush(success), Brush(Color.FromArgb(0x14, success.R, success.G, success.B))),
-            FeatureState.Disabled => ("已禁用", Brush(critical), Brush(Color.FromArgb(0x16, critical.R, critical.G, critical.B))),
-            _ => ("未配置", Brush(neutral), Brush(Color.FromArgb(0x16, neutral.R, neutral.G, neutral.B)))
-        };
-
-        return new FeatureRowVm
-        {
-            FeatureId = entry.FeatureId,
-            DisplayName = display,
-            IdText = $"#{entry.FeatureId}",
-            StateText = stateText,
-            StateBrush = stateBrush,
-            StateBackground = stateBg,
-            ExperimentText = entry.IsExperiment ? "实验功能" : "系统覆盖",
-            ExperimentBrush = Brush(entry.IsExperiment ? caution : neutral),
-            ExperimentBackground = Brush(entry.IsExperiment
-                ? Color.FromArgb(0x16, caution.R, caution.G, caution.B)
-                : Color.FromArgb(0x14, neutral.R, neutral.G, neutral.B)),
-            ExperimentVisibility = hasConfig ? Visibility.Visible : Visibility.Collapsed,
-            PriorityText = entry.PriorityText,
-            CanEnable = _isAdmin && state != FeatureState.Enabled,
-            CanDisable = _isAdmin && state != FeatureState.Disabled,
-            CanReset = _isAdmin && hasConfig,
-            FlyoutTitle = hasConfig
-                ? $"功能「{display}」当前为{stateText}，确认执行操作？"
-                : $"「{display}」尚无自定义配置，确认启用？",
-            FlyoutDesc = BuildFlyoutDesc(state),
-            State = state
-        };
-    }
-
-    private string BuildFlyoutDesc(FeatureState state) => state switch
-    {
-        FeatureState.Enabled => "将禁用该功能（User 优先级，ViVeTool 同款语义）。",
-        FeatureState.Disabled => "将启用该功能（User 优先级，ViVeTool 同款语义）。实验性功能可能导致系统不稳定，请谨慎开启。",
-        _ => "将对功能写入 User 优先级配置（ViVeTool 同款语义）。"
+        FeatureState.Enabled => "已启用",
+        FeatureState.Disabled => "已禁用",
+        FeatureState.Default => "系统默认",
+        _ => "未配置"
     };
 
-    // ───────────────────────────── 操作（Flyout 确认） ─────────────────────────────
-
-    private void FeatureButton_Click(object sender, RoutedEventArgs e)
+    private void FeatureToggle_Toggled(object sender, RoutedEventArgs e)
     {
-        // 按钮自身打开 Flyout，无需额外逻辑
+        // 等绑定完成后再比较，避免虚拟化复用控件时 IsOn/Tag 的更新顺序触发写入。
+        if (sender is ToggleSwitch toggle)
+            DispatcherQueue.TryEnqueue(() => _ = ApplyToggleAsync(toggle));
     }
 
-    private void CancelFlyout_Click(object sender, RoutedEventArgs e) => HideParentFlyout((FrameworkElement)sender);
-
-    private async void ConfirmFeature_Click(object sender, RoutedEventArgs e)
+    private async Task ApplyToggleAsync(ToggleSwitch toggle)
     {
-        var confirm = (Button)sender;
-        HideParentFlyout(confirm);
-        if (confirm.Tag is not FeatureRowVm vm || _busy)
-            return;
-
-        var action = (confirm.Content as string)?.Replace("确认", "") ?? "启用";
-        var resultText = await RunActionAsync(vm, action);
-        if (resultText is null)
-            return;
-
-        SuccessBar.Title = action switch
+        if (toggle.Tag is not FeatureRowVm vm || !toggle.IsLoaded || toggle.IsOn == vm.IsOn) return;
+        if (_busy || !_isAdmin) { toggle.IsOn = vm.IsOn; return; }
+        try { await RunActionsAsync([vm.FeatureId], toggle.IsOn ? "启用" : "禁用"); }
+        finally
         {
-            "重置" => $"已重置功能 #{vm.FeatureId}",
-            "禁用" => $"已禁用功能 #{vm.FeatureId}",
-            _ => $"已启用功能 #{vm.FeatureId}"
-        };
-        SuccessBar.Message = resultText;
-        SuccessBar.IsOpen = true;
-        ErrorBar.IsOpen = false;
-        await RunRefreshAsync();
-    }
-
-    /// <summary>执行启用/禁用/重置；返回结果文案；失败时展示错误并返回 null。</summary>
-    private async Task<string?> RunActionAsync(FeatureRowVm vm, string action)
-    {
-        if (_busy) return null;
-        _busy = true;
-        try
-        {
-            return await Task.Run(() => action switch
-            {
-                "重置" => WindowsFeatureService.Reset(vm.FeatureId),
-                "禁用" => WindowsFeatureService.SetState(vm.FeatureId, false, _persistBoot),
-                _ => WindowsFeatureService.SetState(vm.FeatureId, true, _persistBoot)
-            });
+            // 初始化、虚拟化重用、数据回读和失败回退都不会再次执行写入。
+            toggle.IsOn = vm.IsOn;
         }
-        catch (Exception ex)
+    }
+
+    private async void ResetFeature_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy || !_isAdmin || sender is not Button { Tag: FeatureRowVm vm }) return;
+        var dialog = new ContentDialog
         {
-            ErrorBar.Title = $"操作失败（{action} #{vm.FeatureId}）";
+            XamlRoot = XamlRoot,
+            Title = $"恢复功能 #{vm.FeatureId} 的默认配置？",
+            Content = $"{vm.DisplayName}\n将移除当前和重启后的 User 配置。",
+            PrimaryButtonText = "恢复默认",
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.Close
+        };
+        if (await dialog.ShowAsync() == ContentDialogResult.Primary)
+            await RunActionsAsync([vm.FeatureId], "重置");
+    }
+
+    public Visibility InfoBarVisibility(bool isOpen) => isOpen ? Visibility.Visible : Visibility.Collapsed;
+
+    private void IdInputRow_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        // 窄窗口只将按钮换到下一行，输入和所有操作仍然可见。
+        var narrow = e.NewSize.Width < 560;
+        IdActionsPanel.Margin = new Thickness(0, narrow ? 8 : 0, 0, 0);
+        Grid.SetRow(IdActionsPanel, narrow ? 1 : 0);
+        Grid.SetColumn(IdActionsPanel, narrow ? 0 : 1);
+        Grid.SetColumnSpan(FeatureIdsBox, narrow ? 2 : 1);
+    }
+
+    private async void BatchAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (_busy || !_isAdmin || sender is not Button { Tag: string action }) return;
+        uint[] ids;
+        try { ids = WindowsFeatureCatalog.ParseIds(FeatureIdsBox.Text); }
+        catch (ArgumentException ex)
+        {
+            ErrorBar.Title = "功能 ID 格式错误";
             ErrorBar.Message = ex.Message;
             ErrorBar.IsOpen = true;
             SuccessBar.IsOpen = false;
-            return null;
+            FeatureIdsBox.Focus(FocusState.Programmatic);
+            return;
         }
-        finally
-        {
-            _busy = false;
-        }
+        await RunActionsAsync(ids, action);
     }
 
-    private static void HideParentFlyout(FrameworkElement element)
+    private void SetBusy(bool busy)
     {
-        DependencyObject? current = element;
-        while ((current = VisualTreeHelper.GetParent(current)) is not null)
+        _busy = busy;
+        foreach (var button in IdActionsPanel.Children.OfType<Button>())
+            button.IsEnabled = !busy && _isAdmin;
+        FeatureList.IsEnabled = !busy;
+        RefreshButton.IsEnabled = !busy;
+    }
+
+    private async Task RunActionsAsync(uint[] ids, string action)
+    {
+        if (_busy || !_isAdmin) return;
+        SetBusy(true);
+        ErrorBar.IsOpen = SuccessBar.IsOpen = false;
+        try
         {
-            if (current is FlyoutPresenter { } presenter && VisualTreeHelper.GetParent(presenter) is Flyout flyout)
+            var failures = await Task.Run(() =>
             {
-                flyout.Hide();
-                return;
+                var errors = new List<string>();
+                foreach (var id in ids)
+                {
+                    try
+                    {
+                        if (action == "重置") WindowsFeatureService.Reset(id);
+                        else WindowsFeatureService.SetState(id, action == "启用");
+                    }
+                    catch (Exception ex) { errors.Add($"#{id}：{ex.Message}"); }
+                }
+                return errors;
+            });
+            var succeeded = ids.Length - failures.Count;
+            if (succeeded > 0)
+            {
+                SuccessBar.Title = $"{(action == "重置" ? "恢复默认" : action)}完成：{succeeded} 个功能";
+                SuccessBar.Message = "已更新当前配置并保存重启后的配置，建议重启 Windows。";
+                SuccessBar.IsOpen = true;
+            }
+            if (failures.Count > 0)
+            {
+                ErrorBar.Title = $"{failures.Count} 个功能操作失败";
+                ErrorBar.Message = string.Join("\n", failures);
+                ErrorBar.IsOpen = true;
+            }
+            try { await RefreshCoreAsync(); }
+            catch (Exception ex)
+            {
+                ErrorBar.Title = "操作后刷新失败";
+                ErrorBar.Message = string.Join("\n", failures.Append(ex.Message));
+                ErrorBar.IsOpen = true;
             }
         }
+        finally { SetBusy(false); }
     }
+
 }

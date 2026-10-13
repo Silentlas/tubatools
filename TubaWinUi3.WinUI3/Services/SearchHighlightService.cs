@@ -45,8 +45,6 @@ public static class SearchHighlightService
 
     private static void BounceBorder(Border border)
     {
-        if (FastModeService.IsFastModeEnabled()) return;
-
         var visual = Microsoft.UI.Xaml.Hosting.ElementCompositionPreview.GetElementVisual(border);
         if (visual is null) return;
 

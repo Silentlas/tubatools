@@ -52,7 +52,7 @@ export default {
 
   "home.section3.title": "Native WinUI 3 experience",
   "home.section3.text1": "Built with WinUI 3, embracing the Windows 11 design language natively.",
-  "home.section3.items": "Mica / Acrylic backdrop materials|Light / Dark / System theme|Custom window background image|Compact mode / Turbo mode|Global search quick launch|x86 / x64 / ARM64 support|Modern responsive UI",
+  "home.section3.items": "Mica / Acrylic backdrop materials|Light / Dark / System theme|Custom window background image|Compact mode|Global search quick launch|x86 / x64 / ARM64 support|Modern responsive UI",
 
   "home.section4.title": "47 built-in utilities",
   "home.section4.text1": "47 built-in tools that work out of the box, covering everyday system maintenance, network diagnostics and gaming helpers.",
@@ -188,8 +188,8 @@ export default {
   "features.community.tags": "One-click install|Category filter|Submit your own",
 
   "features.settings.title": "Personalization",
-  "features.settings.desc": "Theme and backdrop, interface language, navigation layout, default landing page, compact list mode and turbo mode - tune the toolbox to fit you.",
-  "features.settings.tags": "Theme / backdrop|Interface language|Navigation layout|Turbo mode",
+  "features.settings.desc": "Theme and backdrop, interface language, navigation layout, default landing page, compact list mode - tune the toolbox to fit you.",
+  "features.settings.tags": "Theme / backdrop|Interface language|Navigation layout",
 
   "download.title": "Download TubaWinUi3 CE",
   "download.subtitle": "Free · Offline · Auto-detects your architecture",

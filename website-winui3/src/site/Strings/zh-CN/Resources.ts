@@ -52,7 +52,7 @@ export default {
 
   "home.section3.title": "WinUI 3 原生体验",
   "home.section3.text1": "图吧工具箱CE采用 WinUI 3 打造，原生拥抱 Windows 11 设计语言。",
-  "home.section3.items": "Mica / Acrylic 毛玻璃背景|亮色 / 暗色 / 跟随系统主题|自定义窗口背景图片|紧凑模式 / 快速模式|全局搜索快速启动|x86 / x64 / ARM64 全架构|现代化响应式界面",
+  "home.section3.items": "Mica / Acrylic 毛玻璃背景|亮色 / 暗色 / 跟随系统主题|自定义窗口背景图片|紧凑模式|全局搜索快速启动|x86 / x64 / ARM64 全架构|现代化响应式界面",
 
   "home.section4.title": "47 款内置实用工具",
   "home.section4.text1": "图吧工具箱CE自带 47 款内置工具，无需额外下载即可使用，覆盖系统维护、网络诊断与游戏辅助的常见场景。",
@@ -188,8 +188,8 @@ export default {
   "features.community.tags": "一键安装|分类筛选|提交自己的工具",
 
   "features.settings.title": "个性化设置",
-  "features.settings.desc": "主题与背景、界面语言、导航布局、默认启动页、简洁列表模式与快速模式，把工具箱调成顺手的样子。",
-  "features.settings.tags": "主题 / 背景|界面语言|导航布局|快速模式",
+  "features.settings.desc": "主题与背景、界面语言、导航布局、默认启动页、简洁列表模式，把工具箱调成顺手的样子。",
+  "features.settings.tags": "主题 / 背景|界面语言|导航布局",
 
   "download.title": "下载图吧工具箱CE",
   "download.subtitle": "免费 · 离线运行 · 自动识别架构",

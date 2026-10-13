@@ -16,6 +16,7 @@ public sealed partial class FavoritesPage : Page, ILocalizablePage
     private readonly ObservableCollection<ToolItem> _tools = [];
     private readonly List<ToolItem> _frequentTools = [];
     private CancellationTokenSource? _iconLoadCts;
+    private CancellationTokenSource? _frequentIconLoadCts;
     private bool _isEditing;
 
     public FavoritesPage()
@@ -40,10 +41,14 @@ public sealed partial class FavoritesPage : Page, ILocalizablePage
     {
         base.OnNavigatedFrom(e);
         ExitEditMode();
+        _iconLoadCts?.Cancel();
+        _frequentIconLoadCts?.Cancel();
     }
 
     private async Task LoadFrequentToolsAsync()
     {
+        _frequentIconLoadCts?.Cancel();
+        var cts = _frequentIconLoadCts = new CancellationTokenSource();
         _frequentTools.Clear();
 
         if (!AppSettings.GetBool(LaunchHistoryService.ShowFrequentRecommendationsSettingKey, true))
@@ -70,6 +75,7 @@ public sealed partial class FavoritesPage : Page, ILocalizablePage
             return;
         }
 
+        if (cts.IsCancellationRequested) return;
         foreach (var record in frequentRecords)
         {
             var tool = allTools.FirstOrDefault(t =>
@@ -96,7 +102,7 @@ public sealed partial class FavoritesPage : Page, ILocalizablePage
             ? string.Format(LocalizationService.L("Favorites_FrequentSubtitleTop", "基于使用频率智能排序 · 前 {0} 个"), _frequentTools.Count)
             : string.Format(LocalizationService.L("Favorites_FrequentSubtitleCount", "基于使用频率智能排序 · {0} 个"), _frequentTools.Count);
 
-        _ = ToolIconService.LoadIconsAsync(_frequentTools.ToList(), DispatcherQueue);
+        _ = ToolIconService.LoadIconsAsync(_frequentTools.ToList(), DispatcherQueue, cts.Token);
     }
 
     private void HideFrequentButton_Click(object sender, RoutedEventArgs e)
@@ -222,6 +228,7 @@ public sealed partial class FavoritesPage : Page, ILocalizablePage
     private async Task LoadToolsAsync()
     {
         _iconLoadCts?.Cancel();
+        var cts = _iconLoadCts = new CancellationTokenSource();
         _tools.Clear();
 
         var favPaths = FavoritesService.GetFavorites();
@@ -255,6 +262,7 @@ public sealed partial class FavoritesPage : Page, ILocalizablePage
             return;
         }
 
+        if (cts.IsCancellationRequested) return;
         foreach (var tool in favTools)
         {
             _tools.Add(tool);
@@ -269,8 +277,7 @@ public sealed partial class FavoritesPage : Page, ILocalizablePage
 
         if (favTools.Count > 0)
         {
-            _iconLoadCts = new CancellationTokenSource();
-            _ = ToolIconService.LoadIconsAsync(favTools, DispatcherQueue);
+            _ = ToolIconService.LoadIconsAsync(favTools, DispatcherQueue, cts.Token);
         }
     }
 

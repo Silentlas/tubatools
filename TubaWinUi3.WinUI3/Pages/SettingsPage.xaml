@@ -154,7 +154,7 @@
                                  </Border>
                                  <StackPanel VerticalAlignment="Center" Spacing="2">
                                      <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="常规" l:Uids.Uid="Settings_General_Title" />
-                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" Text="主题、更新、启动页面、快速模式" l:Uids.Uid="Settings_General_Desc" />
+                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" Text="主题、更新、启动页面" l:Uids.Uid="Settings_General_Desc" />
                                 </StackPanel>
                             </StackPanel>
                         </Expander.Header>
@@ -295,24 +295,6 @@
                                             <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" TextWrapping="Wrap" Text="在「常用」页面顶部显示按使用频率排序的推荐工具" l:Uids.Uid="Settings_ShowFrequent_Desc" />
                                         </StackPanel>
                                         <ToggleSwitch x:Name="ShowFrequentToggle" Grid.Column="2" VerticalAlignment="Center" Toggled="ShowFrequentToggle_Toggled" />
-                                    </Grid>
-                                </Border>
-
-                                <Border x:Name="SettingsFastModeCard" Style="{StaticResource SettingsCardStyle}">
-                                    <Grid ColumnSpacing="16">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
-                                        <Border Style="{StaticResource IconBorderStyle}">
-                                            <FontIcon FontSize="18" Glyph="&#xE945;" />
-                                        </Border>
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                            <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="快速模式" l:Uids.Uid="Settings_FastMode_Title" />
-                                            <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" TextWrapping="Wrap" Text="禁用所有动画，提升响应速度" l:Uids.Uid="Settings_FastMode_Desc" />
-                                        </StackPanel>
-                                        <ToggleSwitch x:Name="FastModeToggle" Grid.Column="2" VerticalAlignment="Center" Toggled="FastModeToggle_Toggled" />
                                     </Grid>
                                 </Border>
 
