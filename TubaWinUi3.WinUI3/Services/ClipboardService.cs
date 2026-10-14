@@ -245,7 +245,7 @@ internal static class ClipboardService
                 var info = new FileInfo(path);
                 if (info.Exists && info.Length > MaxLogBytes)
                 {
-                    // 超限截断保留尾部（照抄 AiDiagnosticsLog 的做法）
+                    // 超限截断保留尾部
                     var tail = ReadTail(path, 256 * 1024);
                     File.WriteAllText(path, tail);
                 }

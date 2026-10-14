@@ -15,7 +15,6 @@ using Windows.Foundation;
 using Shapes = Microsoft.UI.Xaml.Shapes;
 using TubaWinUi3.Services;
 using TubaWinUi3.Services.ActiveIntercept;
-using TubaWinUi3.Services.Ai;
 using TubaWinUi3.Services.Telemetry;
 using TubaWinUi3.Models;
 using Windows.UI;
@@ -48,9 +47,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
     private bool _hardwareFitScreenInitializing;
     private bool _hardwareMultiDeviceNewLineInitializing;
     private bool _cpuzBusy;
-    private bool _aiSettingsInitializing;
-    private bool _aiNameSyncing;
-    private bool _aiTesting;
     private bool _zenBusy;
     private bool _proxySettingsInitializing;
     private bool _proxyTesting;
@@ -136,10 +132,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         ["Watermark"] = "AppearanceExpander",
         ["HardwareFitScreen"] = "HardwareAiExpander",
         ["HardwareMultiDeviceNewLine"] = "HardwareAiExpander",
-        ["AiApiEndpoint"] = "HardwareAiExpander",
-        ["AiModelName"] = "HardwareAiExpander",
-        ["AiApiKey"] = "HardwareAiExpander",
-        ["SearchApiKey"] = "HardwareAiExpander",
         ["ProxyEnabled"] = "GeneralExpander",
         ["ProxyAddress"] = "GeneralExpander",
         ["HttpDownload"] = "ToolsCommunityExpander",
@@ -172,10 +164,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         ["Watermark"] = "SettingsWatermarkCard",
         ["HardwareFitScreen"] = "SettingsHardwareFitScreenCard",
         ["HardwareMultiDeviceNewLine"] = "SettingsHardwareMultiDeviceNewLineCard",
-        ["AiApiEndpoint"] = "SettingsAiEndpointCard",
-        ["AiModelName"] = "SettingsAiEndpointCard",
-        ["AiApiKey"] = "SettingsAiEndpointCard",
-        ["SearchApiKey"] = "SettingsAiEndpointCard",
         ["ProxyEnabled"] = "SettingsProxyCard",
         ["ProxyAddress"] = "SettingsProxyCard",
         ["HttpDownload"] = "SettingsHttpDownloadCard",
@@ -224,7 +212,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         InitHardwareFitScreenToggle();
         InitHardwareMultiDeviceNewLineToggle();
         InitCpuzDataSourceStatus();
-        InitAiSettings();
         InitProxySettings();
         InitGitHubLoginStatus();
         LoadCreditsAvatar();
@@ -253,7 +240,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
             UpdateTintColorSelection(_currentTintColor);
             PopulateBgList();
             UpdateActiveInterceptStatus();
-            UpdateAiConfigStatus();
         };
     }
 
@@ -546,7 +532,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         InitHttpDownloadSettings();
         InitUpdateSection();
         InitCpuzDataSourceStatus();
-        InitAiSettings();
         InitProxySettings();
         InitGitHubLoginStatus();
         ApplyLocalizedAppTitle();
@@ -1695,385 +1680,6 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         }
     }
 
-    private void InitAiSettings()
-    {
-        _aiSettingsInitializing = true;
-        try
-        {
-            RefreshAiProviderList();
-            LoadAiProviderIntoUi(null);
-
-            SearchApiKeyBox.Password = AppSettings.Get("SearchApiKey") ?? "";
-        }
-        finally
-        {
-            _aiSettingsInitializing = false;
-        }
-    }
-
-    private AiProvider? CurrentAiProvider() => AiProviderCombo.SelectedItem as AiProvider;
-
-    private void RefreshAiProviderList()
-    {
-        AiProviderStore.SyncLocalProviderModels();
-        var providers = AiProviderStore.GetProviders();
-        var selectedId = AiProviderStore.SelectedProviderId;
-        // 必须传副本：传活列表实例时，列表被原地修改后 ItemsSourceView 快照不刷新，
-        // 同步设置 SelectedItem 会抛 E_INVALIDARG（Value does not fall within the expected range）
-        AiProviderCombo.ItemsSource = providers.ToList();
-        AiProviderCombo.SelectedItem = providers.FirstOrDefault(p => p.Id == selectedId) ?? providers.FirstOrDefault();
-    }
-
-    /// <summary>把指定提供商（null = 当前选中）加载到编辑器控件。</summary>
-    private void LoadAiProviderIntoUi(string? providerId)
-    {
-        var provider = providerId is null
-            ? CurrentAiProvider() ?? AiProviderStore.SelectedProvider
-            : AiProviderStore.GetProvider(providerId) ?? AiProviderStore.SelectedProvider;
-
-        AiEndpointTextBox.Text = provider.BaseUrl ?? "";
-        AiEndpointTextBox.IsEnabled = !provider.EndpointLocked;
-        AiApiKeyBox.Password = provider.ApiKey ?? "";
-
-        var isLocal = provider.Kind == ProviderKind.Local;
-
-        // 名称：预设不可改（由「恢复默认」复位），自定义可改
-        _aiNameSyncing = true;
-        AiProviderNameBox.Text = provider.Name;
-        _aiNameSyncing = false;
-        AiProviderNameBox.IsEnabled = !provider.IsPreset;
-        AiDeleteProviderButton.IsEnabled = !provider.IsPreset;
-
-        // 本地模型提供商没有端点/Key/手工模型列表（模型由「本地 AI 试炼场」派生）
-        AiEndpointTextBox.IsEnabled = !provider.EndpointLocked && !isLocal;
-        AiApiKeyBox.IsEnabled = !isLocal;
-        AiNewModelBox.IsEnabled = !isLocal;
-        AiAddModelButton.IsEnabled = !isLocal;
-
-        // ItemsSource 用同一份列表实例，保证 SelectedItem 引用一致
-        var models = provider.Models.ToList();
-        AiModelsList.ItemsSource = models;
-        AiDefaultModelCombo.ItemsSource = models;
-        AiDefaultModelCombo.SelectedItem = models
-            .FirstOrDefault(m => m.Id.Equals(provider.DefaultModel, StringComparison.OrdinalIgnoreCase))
-            ?? models.FirstOrDefault();
-
-        var isZen = provider.Id == AiProviderStore.OpenCodeZenProviderId;
-        AiZenSection.Visibility = isZen ? Visibility.Visible : Visibility.Collapsed;
-        AiKeyLinkButton.Visibility = string.IsNullOrWhiteSpace(provider.KeyHintUrl) ? Visibility.Collapsed : Visibility.Visible;
-        AiApiKeyHintText.Text = isZen
-            ? LocalizationService.L("Settings_AiKeyHintZen", "API Key（可选）：留空使用匿名免费模型（额度低）；登录获取 Key 后额度大幅提升")
-            : LocalizationService.L("Settings_AiApiKey_Hint", "API 密钥，将安全保存在本地");
-
-        if (isZen)
-        {
-            AiZenStatusText.Text = string.IsNullOrWhiteSpace(provider.ApiKey)
-                ? LocalizationService.L("Settings_AiZenNoKey", "未配置 Key（匿名额度较低）")
-                : string.Format(LocalizationService.L("Settings_AiZenHasKey", "已配置 Key：{0}（额度更高）"), MaskAiKey(provider.ApiKey));
-        }
-
-        UpdateAiConfigStatus();
-    }
-
-    private static string MaskAiKey(string key)
-        => key.Length <= 12 ? key : $"{key[..7]}…{key[^4..]}";
-
-    private async void AiZenLoginButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_zenBusy) return;
-        _zenBusy = true;
-        AiZenLoginButton.IsEnabled = false;
-        AiZenRefreshButton.IsEnabled = false;
-        AiZenLoginText.Text = LocalizationService.L("Settings_AiZenWaitingLogin", "等待登录...");
-        AiZenLoginIcon.Glyph = "\uE895";
-        try
-        {
-            var key = await OpenCodeZenLoginWindow.ShowAsync();
-            if (string.IsNullOrWhiteSpace(key)) return;
-
-            var provider = AiProviderStore.GetProvider(AiProviderStore.OpenCodeZenProviderId);
-            if (provider is not null)
-            {
-                provider.ApiKey = key;
-                AiProviderStore.Save();
-            }
-        }
-        catch (Exception ex)
-        {
-            AiZenStatusText.Text = string.Format(LocalizationService.L("Settings_AiZenGetKeyFailed", "获取 Key 失败：{0}"), ex.Message);
-        }
-        finally
-        {
-            _zenBusy = false;
-            AiZenLoginButton.IsEnabled = true;
-            AiZenRefreshButton.IsEnabled = true;
-            AiZenLoginText.Text = LocalizationService.L("Settings_AiZen_LoginButton", "登录并获取 Key");
-            AiZenLoginIcon.Glyph = "\uE77B";
-            LoadAiProviderIntoUi(null);
-        }
-    }
-
-    private void UpdateAiConfigStatus()
-    {
-        if (AiService.IsLocalProviderSelected)
-        {
-            AiConfigStatusText.Text = LocalizationService.L("Settings_AiProvider_LocalHint",
-                "本地模型：对话在「本地 AI 试炼场」的模型库中下载/导入；仅 AI 助手使用本地推理，其他 AI 功能仍走自带网关。");
-            AiConfigStatusText.Foreground = new SolidColorBrush(ThemeColors.AccentBlue);
-        }
-        else if (AiService.IsUsingDefaultModel)
-        {
-            AiConfigStatusText.Text = LocalizationService.L("Settings_AiUsingDefaultModel", "⚠️ 使用自带默认模型，可能出现排队/限额满速，质量低下等问题。推荐使用 DeepSeek V4 Pro。");
-            AiConfigStatusText.Foreground = new SolidColorBrush(ThemeColors.AccentOrange);
-        }
-        else
-        {
-            var provider = AiProviderStore.SelectedProvider;
-            AiConfigStatusText.Text = string.Format(LocalizationService.L("Settings_AiConfigured", "已配置：{0} · {1}"), provider.Name, AiProviderStore.SelectedModelId);
-            AiConfigStatusText.Foreground = new SolidColorBrush(ThemeColors.AccentGreen);
-        }
-    }
-
-    private void AiProviderCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_aiSettingsInitializing) return;
-        if (CurrentAiProvider() is not { } provider) return;
-
-        AiProviderStore.SetSelected(provider.Id);
-        LoadAiProviderIntoUi(provider.Id);
-    }
-
-    private void AiAddProviderButton_Click(object sender, RoutedEventArgs e)
-    {
-        var provider = AiProviderStore.AddCustomProvider();
-        RefreshAiProviderList();
-        LoadAiProviderIntoUi(provider.Id);
-    }
-
-    private async void AiDeleteProviderButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (CurrentAiProvider() is not { } provider) return;
-        if (provider.IsPreset) return;
-
-        var dialog = new ContentDialog
-        {
-            Title = LocalizationService.L("Settings_AiProvider_DeleteTitle", "删除提供商"),
-            Content = new TextBlock
-            {
-                Text = string.Format(LocalizationService.L("Settings_AiProvider_DeleteConfirm", "确定删除提供商「{0}」？此操作不可恢复。"), provider.Name),
-                TextWrapping = TextWrapping.Wrap,
-            },
-            PrimaryButtonText = LocalizationService.L("Settings_AiProvider_DeleteButton", "删除"),
-            CloseButtonText = LocalizationService.L("Common_Cancel", "取消"),
-            DefaultButton = ContentDialogButton.Close,
-            XamlRoot = XamlRoot,
-            RequestedTheme = ThemeService.CurrentElementTheme,
-        };
-        if (await dialog.ShowAsync() != ContentDialogResult.Primary) return;
-
-        AiProviderStore.DeleteProvider(provider.Id);
-        RefreshAiProviderList();
-        LoadAiProviderIntoUi(null);
-    }
-
-    private void AiProviderNameBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (_aiSettingsInitializing || _aiNameSyncing) return;
-        if (CurrentAiProvider() is not { } provider) return;
-        if (provider.IsPreset) return;
-        AiProviderStore.RenameProvider(provider.Id, AiProviderNameBox.Text);
-        // 更新下拉显示名（不重建列表以免打断输入焦点）
-        AiProviderCombo.ItemsSource = AiProviderStore.GetProviders().ToList();
-        AiProviderCombo.SelectedItem = AiProviderStore.GetProvider(provider.Id);
-        UpdateAiConfigStatus();
-    }
-
-    private void AiResetProviderButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (CurrentAiProvider() is not { } provider) return;
-        AiProviderStore.ResetProviderDefaults(provider.Id);
-        LoadAiProviderIntoUi(provider.Id);
-    }
-
-    private void AiEndpointTextBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        if (_aiSettingsInitializing) return;
-        if (CurrentAiProvider() is not { } provider) return;
-        provider.BaseUrl = AiEndpointTextBox.Text.Trim();
-        AiProviderStore.Save();
-        UpdateAiConfigStatus();
-    }
-
-    private void AiApiKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
-    {
-        if (_aiSettingsInitializing) return;
-        if (CurrentAiProvider() is not { } provider) return;
-        provider.ApiKey = AiApiKeyBox.Password.Trim();
-        AiProviderStore.Save();
-        UpdateAiConfigStatus();
-    }
-
-    private void AiKeyLinkButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (CurrentAiProvider() is not { } provider) return;
-        if (string.IsNullOrWhiteSpace(provider.KeyHintUrl)) return;
-        try
-        {
-            Process.Start(new ProcessStartInfo(provider.KeyHintUrl) { UseShellExecute = true });
-        }
-        catch { }
-    }
-
-    private void AiModelDelete_Click(object sender, RoutedEventArgs e)
-    {
-        if (CurrentAiProvider() is not { } provider) return;
-        if ((sender as Button)?.Tag is not AiModelOption model) return;
-
-        provider.Models.Remove(model);
-        if (string.IsNullOrWhiteSpace(provider.DefaultModel) || provider.DefaultModel == model.Id)
-            provider.DefaultModel = provider.Models.FirstOrDefault()?.Id ?? "";
-
-        AiProviderStore.Save();
-        LoadAiProviderIntoUi(provider.Id);
-    }
-
-    private void AiAddModelButton_Click(object sender, RoutedEventArgs e) => AddAiModel();
-
-    private void AiNewModelBox_KeyDown(object sender, KeyRoutedEventArgs e)
-    {
-        if (e.Key == Windows.System.VirtualKey.Enter)
-        {
-            e.Handled = true;
-            AddAiModel();
-        }
-    }
-
-    private void AddAiModel()
-    {
-        if (CurrentAiProvider() is not { } provider) return;
-
-        var id = AiNewModelBox.Text.Trim();
-        if (id.Length == 0) return;
-
-        provider.AddModel(id);
-        if (string.IsNullOrWhiteSpace(provider.DefaultModel))
-            provider.DefaultModel = id;
-
-        AiProviderStore.Save();
-        AiNewModelBox.Text = "";
-        LoadAiProviderIntoUi(provider.Id);
-    }
-
-    private void AiDefaultModelCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (_aiSettingsInitializing) return;
-        if (CurrentAiProvider() is not { } provider) return;
-        if (AiDefaultModelCombo.SelectedItem is not AiModelOption model) return;
-
-        provider.DefaultModel = model.Id;
-        AiProviderStore.Save();
-        UpdateAiConfigStatus();
-    }
-
-    private async void AiZenRefreshButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_zenBusy) return;
-        _zenBusy = true;
-        AiZenRefreshButton.IsEnabled = false;
-        AiZenRefreshText.Text = LocalizationService.L("Settings_AiZenRefreshing", "刷新中...");
-        AiZenRefreshIcon.Glyph = "\uE895";
-        try
-        {
-            var (count, error) = await OpenCodeZenAuthService.RefreshFreeModelsAsync();
-            AiZenStatusText.Text = error is null
-                ? string.Format(LocalizationService.L("Settings_AiZenRefreshed", "已刷新 {0} 个免费模型"), count)
-                : string.Format(LocalizationService.L("Settings_AiZenRefreshFailed", "刷新失败：{0}"), error);
-        }
-        catch (Exception ex)
-        {
-            AiZenStatusText.Text = string.Format(LocalizationService.L("Settings_AiZenRefreshFailed", "刷新失败：{0}"), ex.Message);
-        }
-        finally
-        {
-            _zenBusy = false;
-            AiZenRefreshButton.IsEnabled = true;
-            AiZenRefreshText.Text = LocalizationService.L("Settings_AiZen_RefreshButton", "刷新免费模型");
-            AiZenRefreshIcon.Glyph = "\uE72C";
-            LoadAiProviderIntoUi(null);
-        }
-    }
-
-    private void SearchApiKeyBox_PasswordChanged(object sender, RoutedEventArgs e)
-    {
-        if (_aiSettingsInitializing) return;
-        AppSettings.Set("SearchApiKey", SearchApiKeyBox.Password);
-    }
-
-    private async void AiTestButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_aiTesting) return;
-        _aiTesting = true;
-        AiTestButton.IsEnabled = false;
-        AiTestButtonText.Text = LocalizationService.L("Settings_AiTesting", "测试中...");
-        AiTestIcon.Glyph = "\uE950";
-
-        try
-        {
-            var provider = CurrentAiProvider();
-            var result = await AiService.TestConnectionAsync(
-                endpoint: provider?.BaseUrl,
-                model: provider?.DefaultModel,
-                apiKey: provider?.ApiKey);
-
-            if (result.Success)
-            {
-                AiTestIcon.Glyph = "\uE73E";
-                AiTestButtonText.Text = LocalizationService.L("Settings_AiTestSuccess", "连接成功");
-                AiConfigStatusText.Text = LocalizationService.L("Settings_AiTestSuccessStatus", "AI 服务已配置，连接测试成功");
-                AiConfigStatusText.Foreground = new SolidColorBrush(ThemeColors.AccentGreen);
-            }
-            else
-            {
-                AiTestIcon.Glyph = "\uE783";
-                AiTestButtonText.Text = LocalizationService.L("Settings_AiTestFailed", "连接失败");
-                AiConfigStatusText.Text = string.Format(LocalizationService.L("Settings_AiTestFailedStatus", "连接失败：{0}"), result.Error);
-                AiConfigStatusText.Foreground = new SolidColorBrush(ThemeColors.AccentRed);
-
-                var dialog = new ContentDialog
-                {
-                    XamlRoot = XamlRoot,
-                    Title = LocalizationService.L("Settings_AiTestFailedDialogTitle", "AI 连接测试失败"),
-                    Content = new ScrollViewer
-                    {
-                        MaxHeight = 200,
-                        Content = new TextBlock
-                        {
-                            Text = result.Error ?? LocalizationService.L("Common_UnknownError", "未知错误"),
-                            TextWrapping = TextWrapping.Wrap,
-                            FontSize = 14
-                        }
-                    },
-                    CloseButtonText = LocalizationService.L("Common_Confirm", "确定"),
-                    RequestedTheme = ThemeService.CurrentElementTheme
-                };
-                await dialog.ShowAsync();
-            }
-        }
-        finally
-        {
-            _aiTesting = false;
-            AiTestButton.IsEnabled = true;
-
-            await Task.Delay(2000);
-
-            if (!_aiTesting)
-            {
-                AiTestIcon.Glyph = "\uE73E";
-                AiTestButtonText.Text = LocalizationService.L("Settings_AiTest_Button", "测试连接");
-            }
-        }
-    }
-
     private void InitProxySettings()
     {
         _proxySettingsInitializing = true;
@@ -2167,7 +1773,7 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         _proxyTesting = true;
         ProxyTestButton.IsEnabled = false;
         ProxyTestIcon.Glyph = "\uE950";
-        ProxyTestButtonText.Text = LocalizationService.L("Settings_AiTesting", "测试中...");
+        ProxyTestButtonText.Text = LocalizationService.L("Settings_ProxyTesting", "测试中...");
         ProxyTestStatusText.Text = LocalizationService.L("Settings_ProxyTestTesting", "正在测试代理连接...");
         
         try
@@ -2191,7 +1797,7 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
                     if (response.IsSuccessStatusCode || response.StatusCode == System.Net.HttpStatusCode.Redirect)
                     {
                         ProxyTestIcon.Glyph = "\uE73E";
-                        ProxyTestButtonText.Text = LocalizationService.L("Settings_AiTestSuccess", "连接成功");
+                        ProxyTestButtonText.Text = LocalizationService.L("Settings_ProxyTestSuccess", "连接成功");
                         ProxyTestStatusText.Text = string.Format(LocalizationService.L("Settings_ProxyTestSuccess", "代理连接成功（{0}）"), response.StatusCode);
                         ProxyTestStatusText.Foreground = new SolidColorBrush(ThemeColors.AccentGreen);
                         return;
@@ -2204,14 +1810,14 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
             }
             
             ProxyTestIcon.Glyph = "\uE783";
-            ProxyTestButtonText.Text = LocalizationService.L("Settings_AiTestFailed", "连接失败");
+            ProxyTestButtonText.Text = LocalizationService.L("Settings_ProxyTestFailed", "连接失败");
             ProxyTestStatusText.Text = lastError?.Message ?? LocalizationService.L("Settings_ProxyTestUnreachable", "无法连接代理服务器");
             ProxyTestStatusText.Foreground = new SolidColorBrush(ThemeColors.AccentRed);
         }
         catch (Exception ex)
         {
             ProxyTestIcon.Glyph = "\uE783";
-            ProxyTestButtonText.Text = LocalizationService.L("Settings_AiTestFailed", "连接失败");
+            ProxyTestButtonText.Text = LocalizationService.L("Settings_ProxyTestFailed", "连接失败");
             ProxyTestStatusText.Text = ex.Message;
             ProxyTestStatusText.Foreground = new SolidColorBrush(ThemeColors.AccentRed);
         }
@@ -3004,6 +2610,9 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
 
     private void InitHttpDownloadSettings()
     {
+        // 避免 Uid 附加属性解析提示文字时扫描所有程序集，保持 AI 依赖按需加载。
+        ToolTipService.SetToolTip(HttpDownloadResetPathButton,
+            LocalizationService.L("Settings_HttpDownloadResetPath_Button", "恢复默认路径"));
         HttpDownloadPathText.Text = GetHttpDownloadPath();
 
         HttpDownloadActionComboBox.ItemsSource = new[]

@@ -146,14 +146,6 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
         _ = LoadHardwareInfoAsync(forceRefresh: true);
     }
 
-    private async void AnalyzeHardware_Click(object sender, RoutedEventArgs e)
-    {
-        if (_currentSections is null) return;
-        var summary = "本机硬件摘要（" + HardwareSourceText.Text + "）\n" + string.Join("\n", _currentSections.SelectMany(s => s.Items).Select(i => $"{i.Label}：{i.Value}"));
-        try { await AiAssistantTool.OpenWithContextAsync(summary, XamlRoot); }
-        catch (Exception ex) { ShowStatusBar("AI 对话未打开", ex.Message, InfoBarSeverity.Error); }
-    }
-
     private void DetailButton_Click(object sender, RoutedEventArgs e)
     {
         Frame.Navigate(typeof(HardwareDetailPage), null, new SlideNavigationTransitionInfo() { Effect = SlideNavigationTransitionEffect.FromRight });

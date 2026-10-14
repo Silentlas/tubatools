@@ -15,8 +15,6 @@ public static class TempCleanupService
     private const int DeleteAttempts = 3;
     private const int DeleteRetryDelayMs = 300;
 
-    /// <summary>app_crash.log（App.xaml.cs 崩溃日志，固定文件名）。</summary>
-    private const string CrashLogName = "app_crash.log";
 
     /// <summary>
     /// 本软件在 %TEMP% 下创建的临时条目前缀（目录与文件共用），
@@ -35,6 +33,8 @@ public static class TempCleanupService
         "doceng_",
         "ocr_",
         "tuba-",
+        "tuba_ep_probe_",
+        "TubaWinUi3Task_",
     };
 
     public sealed record CleanupResult(int DeletedCount, int SkippedCount, long FreedBytes);
@@ -43,7 +43,7 @@ public static class TempCleanupService
     public static bool IsAppTempEntry(string name)
     {
         if (string.IsNullOrEmpty(name)) return false;
-        if (string.Equals(name, CrashLogName, StringComparison.OrdinalIgnoreCase)) return true;
+
         foreach (var prefix in KnownPrefixes)
         {
             if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) return true;
@@ -70,7 +70,7 @@ public static class TempCleanupService
     }
 
     /// <summary>扫描并删除 %TEMP% 下所有本软件创建的临时条目。</summary>
-    public static CleanupResult CleanTempFiles(CancellationToken cancellationToken = default)
+    public static CleanupResult CleanTempFiles(CancellationToken cancellationToken = default, DateTime? olderThanUtc = null)
     {
         var deleted = 0;
         var skipped = 0;
@@ -82,16 +82,17 @@ public static class TempCleanupService
 
             try
             {
+                if (olderThanUtc is { } cutoff && !IsExpiredEntry(entry, cutoff)) continue;
                 if (Directory.Exists(entry))
                 {
-                    freed += MeasureDirectory(entry);
-                    if (TryDeleteDirectory(entry)) deleted++;
+                    var size = MeasureDirectory(entry);
+                    if (TryDeleteDirectory(entry)) { deleted++; freed += size; }
                     else skipped++;
                 }
                 else if (File.Exists(entry))
                 {
-                    freed += new FileInfo(entry).Length;
-                    if (TryDeleteFile(entry)) deleted++;
+                    var size = new FileInfo(entry).Length;
+                    if (TryDeleteFile(entry)) { deleted++; freed += size; }
                     else skipped++;
                 }
             }
@@ -102,6 +103,18 @@ public static class TempCleanupService
         }
 
         return new CleanupResult(deleted, skipped, freed);
+    }
+
+    // 自动清理保留待安装更新，且目录中任意近期写入的文件都阻止整目录删除。
+    internal static bool IsExpiredEntry(string entry, DateTime cutoff)
+    {
+        if (Path.GetFileName(entry).Equals("TubaWinUi3_Update", StringComparison.OrdinalIgnoreCase)) return false;
+        if ((File.GetAttributes(entry) & FileAttributes.ReparsePoint) != 0) return false;
+        if (File.GetLastWriteTimeUtc(entry) >= cutoff) return false;
+        if (!Directory.Exists(entry)) return true;
+        foreach (var child in Directory.EnumerateFileSystemEntries(entry))
+            if (!IsExpiredEntry(child, cutoff)) return false;
+        return true;
     }
 
     /// <summary>把字节数格式化为 B/KB/MB/GB 短字符串。</summary>

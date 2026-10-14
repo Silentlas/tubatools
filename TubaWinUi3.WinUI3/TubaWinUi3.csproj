@@ -10,6 +10,10 @@
     <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == ''">win-$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</RuntimeIdentifier>
     <PublishProfile Condition="Exists('Properties\PublishProfiles\win-$(Platform).pubxml')">win-$(Platform).pubxml</PublishProfile>
     <UseWinUI>true</UseWinUI>
+    <!-- 主程序使用 JIT + 不裁剪，AI 运行库按需加载。CsWinRT 的 AOT 全局类型表
+         会在普通 XAML 控件封送时提前解析 Windows ML 类型，导致未下载运行库时启动失败。
+         AOT 发布仍保留其必需的优化器；NativeAOT helper 项目不受此配置影响。 -->
+    <CsWinRTAotOptimizerEnabled Condition="'$(PublishAot)' != 'true'">false</CsWinRTAotOptimizerEnabled>
     <WinUISDKReferences>false</WinUISDKReferences>
     <EnableMsixTooling>false</EnableMsixTooling>
     <WindowsPackageType>None</WindowsPackageType>
@@ -157,7 +161,6 @@
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.WinUI.Controls.SettingsControls" Version="8.2.251219" />
     <PackageReference Include="Downloader" Version="5.9.6" />
-    <PackageReference Include="FieldCure.AssistStudio.Controls.WinUI" Version="0.21.0" />
     <PackageReference Include="HtmlAgilityPack" Version="1.12.4" />
     <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
     <PackageReference Include="LiveChartsCore.SkiaSharpView.WinUI" Version="2.0.4" />
@@ -165,7 +168,6 @@
     <PackageReference Include="Microsoft.ApplicationInsights" Version="2.23.0" />
     <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.2.2" />
 
-    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.8.3" />
 
     <PackageReference Include="Microsoft.Toolkit.Uwp.Notifications" Version="7.1.3" />
 
@@ -181,7 +183,6 @@
     <FrameworkReference Include="Microsoft.WindowsDesktop.App.WindowsForms" />
     <PackageReference Include="System.Management" Version="10.0.8" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="10.0.0" />
-    <PackageReference Include="SIPSorcery" Version="10.0.14" />
 
     <!-- 内置工具彩色矢量图标（Assets/BuiltinIcons/*.svg）光栅化：界面走 WinUI 原生
          SvgImageSource，桌面快捷方式的 .ico 需要离屏渲染，用这个 MIT 纯托管库。 -->
@@ -191,12 +192,17 @@
 
     <!-- 本地 AI 试炼场：Windows ML 自包含运行时（ONNX Runtime 1.27 + DirectML + ExecutionProviderCatalog
          的 WinRT API），负责 NPU/GPU/CPU 执行提供程序的发现、按需下载与注册。
-         原生资产仅 win-x64 / win-arm64（无 x86），页面在 x86 下做降级提示。 -->
-    <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.4.89" />
+         原生资产仅 win-x64 / win-arm64（无 x86），页面在 x86 下做降级提示。
+         运行时资产按需下载（见 AiRuntimeExcludeAssets）；System.Numerics.Tensors 是其传递依赖，
+         同样显式提升以便排除。 -->
+    <PackageReference Include="Microsoft.Windows.AI.MachineLearning" Version="2.4.89" ExcludeAssets="$(AiRuntimeWinMlExcludeAssets)" />
+    <PackageReference Include="System.Numerics.Tensors" Version="9.0.0" ExcludeAssets="$(AiRuntimeWinMlExcludeAssets)" />
     <!-- 本地 AI 试炼场：ONNX Runtime GenAI（LLM 生成循环 / KV Cache / 采样），WinML 变体经
          Windows ML 自动选择硬件（NPU → GPU → CPU）。不要同时引用其它 GenAI 变体（原生库同名冲突）。
-         该包自带 targets 明确拒绝 x86 平台，故 x86 RID 下排除引用，改用编译桩。 -->
-    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.WinML" Version="0.17.1" Condition="'$(RuntimeIdentifier)' != 'win-x86'" />
+         该包自带 targets 明确拒绝 x86 平台，故 x86 RID 下排除引用，改用编译桩。
+         Managed 是其传递依赖（托管 API 所在），显式提升以便排除运行时资产。 -->
+    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.WinML" Version="0.17.1" Condition="'$(RuntimeIdentifier)' != 'win-x86'" ExcludeAssets="$(AiRuntimeExcludeAssets)" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntimeGenAI.Managed" Version="0.17.1" Condition="'$(RuntimeIdentifier)' != 'win-x86'" ExcludeAssets="$(AiRuntimeExcludeAssets)" />
 
     <PackageReference Include="WinUI3Localizer" Version="2.3.0" />
 
@@ -210,30 +216,47 @@
     <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
   </PropertyGroup>
 
+  <!--
+    AI 依赖的运行时资产（Windows ML / ORT GenAI 的托管与原生 DLL）
+    默认不随包分发：首次打开 AI 内置工具（本地AI试炼场）时按需下载「AI 运行库」
+    zip 到数据目录，由 Services/AiRuntime/AiRuntimeLoader 动态加载（详见 AGENTS.md）。
+    值为 "runtime;native"——native 是独立的资产类型，光排除 runtime 原生 DLL 仍会进包。
+    本地开发需要 DLL 随输出时用 -p:BundleAiRuntime=true（AiRuntimeLoader 会优先使用
+    应用目录里已有的 DLL，无需下载）。
+  -->
+  <PropertyGroup>
+    <AiRuntimeExcludeAssets Condition="'$(BundleAiRuntime)' != 'true'">runtime;native</AiRuntimeExcludeAssets>
+    <!-- Windows ML 包的托管程序集是架构无关的小文件（约 330KB），x86 版保留随包分发
+         （该包无 32 位原生资产，x86 本地推理本来就不可用）——否则 x86 用户要为两个
+         托管 DLL 下载 51MB 整包。x64/arm64 与其他 AI 依赖一致按需下载。 -->
+    <AiRuntimeWinMlExcludeAssets Condition="'$(BundleAiRuntime)' != 'true' AND '$(RuntimeIdentifier)' != 'win-x86'">runtime;native</AiRuntimeWinMlExcludeAssets>
+  </PropertyGroup>
+
+  <!--
+    ONNX Runtime GenAI（WinML 变体）包用 props 里的 None + CopyToOutputDirectory 硬拷原生库
+    （onnxruntime-genai.dll / onnxruntime-genai-cuda.dll），ExcludeAssets 与复制项过滤都管不到：
+    构建 / 发布完成后直接从输出目录删除（-p:BundleAiRuntime=true 的本地开发构建保留）。
+  -->
+  <Target Name="StripAiRuntimeNativeCopiesAfterBuild" AfterTargets="Build"
+          Condition="'$(AiRuntimeExcludeAssets)' != ''">
+    <ItemGroup>
+      <_AiRuntimeLeftover Include="$(OutDir)onnxruntime-genai.dll;$(OutDir)onnxruntime-genai-cuda.dll" />
+    </ItemGroup>
+    <Delete Files="@(_AiRuntimeLeftover)" TreatErrorsAsWarnings="true" />
+  </Target>
+
+  <Target Name="StripAiRuntimeNativeCopiesAfterPublish" AfterTargets="Publish"
+          Condition="'$(AiRuntimeExcludeAssets)' != '' AND '$(PublishDir)' != ''">
+    <ItemGroup>
+      <_AiRuntimeLeftoverPublish Include="$(PublishDir)onnxruntime-genai.dll;$(PublishDir)onnxruntime-genai-cuda.dll" />
+    </ItemGroup>
+    <Delete Files="@(_AiRuntimeLeftoverPublish)" TreatErrorsAsWarnings="true" />
+  </Target>
+
   <!-- x86：Windows ML 运行时无 32 位原生资产，且 ORT GenAI 包拒绝 x86；本地 LLM 部分以编译桩替代。 -->
   <PropertyGroup Condition="'$(RuntimeIdentifier)' == 'win-x86'">
     <DefineConstants>$(DefineConstants);AI_PLAYGROUND_X86</DefineConstants>
   </PropertyGroup>
-
-  <!--
-    FieldCure.AssistStudio.Controls.WinUI 0.21.0 包缺陷修复：包内 AssistStudio.Controls.pri
-    声明了 Files/AssistStudio.Controls/icon.png 负载条目，但 lib 目录并未随包携带该文件。
-    WinUI 的 AddPriPayloadFilesToCopyToOutputDirectoryItems 会把该条目加入输出复制列表，
-    直接构建报 MSB3030。这里在构建期把包根部的 icon.png 幂等补位到声明路径。
-    NuGetPackageRoot 不保证带尾部分隔符（NUGET_PACKAGES 指向自定义包目录时即不带），故拼路径前先归一化。
-  -->
-  <Target Name="FixFieldCureMissingPriPayload" BeforeTargets="AddPriPayloadFilesToCopyToOutputDirectoryItems">
-    <PropertyGroup>
-      <_FcPkgDir>$([MSBuild]::EnsureTrailingSlash('$(NuGetPackageRoot)'))fieldcure.assiststudio.controls.winui\0.21.0\</_FcPkgDir>
-      <_FcIconSrc>$(_FcPkgDir)icon.png</_FcIconSrc>
-      <_FcIconDstNet8>$(_FcPkgDir)lib\net8.0-windows10.0.19041\AssistStudio.Controls\icon.png</_FcIconDstNet8>
-      <_FcIconDstNet9>$(_FcPkgDir)lib\net9.0-windows10.0.19041\AssistStudio.Controls\icon.png</_FcIconDstNet9>
-    </PropertyGroup>
-    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(_FcIconDstNet8)'))" />
-    <Copy SourceFiles="$(_FcIconSrc)" DestinationFiles="$(_FcIconDstNet8)" Condition="Exists('$(_FcIconSrc)') And !Exists('$(_FcIconDstNet8)')" />
-    <MakeDir Directories="$([System.IO.Path]::GetDirectoryName('$(_FcIconDstNet9)'))" />
-    <Copy SourceFiles="$(_FcIconSrc)" DestinationFiles="$(_FcIconDstNet9)" Condition="Exists('$(_FcIconSrc)') And !Exists('$(_FcIconDstNet9)')" />
-  </Target>
 
   <!--
     Pre-build the bundled icon cache (IconCache/) before publish so first launch

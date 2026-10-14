@@ -133,6 +133,15 @@ public sealed partial class AiPlaygroundPage : Page, ILocalizablePage
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        // 运行库兜底：正常入口由 AiRuntimeGate 拦在导航之前，这里覆盖回退导航等边缘路径——
+        // 运行库缺失时任何 AI 类型都不能被触碰（WinML/ORT 程序集可能不在应用目录）。
+        if (!Services.AiRuntime.AiRuntimeLoader.IsReady)
+        {
+            UnsupportedBanner.Message = "AI 运行库未初始化，请返回工具列表重新打开「本地AI试炼场」并按提示下载。";
+            UnsupportedBanner.IsOpen = true;
+            return;
+        }
+
         if (!_subscribed)
         {
             _subscribed = true;
@@ -172,6 +181,19 @@ public sealed partial class AiPlaygroundPage : Page, ILocalizablePage
     }
 
     private void OnLanguageChanged() => SafeUiTick(ApplyStaticTexts);
+
+    /// <summary>
+    /// 独立窗口关闭时的显式清理（窗口销毁时 Frame 不保证触发 Unloaded/OnNavigatedFrom）：
+    /// 释放模型与摄像头/截图句柄。幂等，可重复调用。
+    /// </summary>
+    public void CleanupOnWindowClose()
+    {
+        StopLive();
+        _refreshTimer.Stop();
+        _chatFlushTimer.Stop();
+        CancelChat();
+        DisposeRunners();
+    }
 
     public void ApplyLocalization()
     {
@@ -1447,6 +1469,19 @@ public sealed partial class AiPlaygroundPage : Page, ILocalizablePage
         try { _chatCts?.Cancel(); } catch { }
     }
 
+    /// <summary>
+    /// 生成期间禁用「换模型 / 换任务 / 换设备 / 改上下文」这些会触发重载与释放的控件：
+    /// 卸载现在会等待在途生成退出（不会崩），但生成中重载纯属浪费且体验差。
+    /// </summary>
+    private void SetConfigControlsEnabled(bool enabled)
+    {
+        ModelCombo.IsEnabled = enabled;
+        ModeCombo.IsEnabled = enabled;
+        DeviceCombo.IsEnabled = enabled;
+        ContextTokensBox.IsEnabled = enabled;
+        ReloadModelButton.IsEnabled = enabled;
+    }
+
     private async Task SendChatAsync()
     {
         if (_busy || _chatRunning || _current is null) return;
@@ -1495,6 +1530,7 @@ public sealed partial class AiPlaygroundPage : Page, ILocalizablePage
         _chatFlushTimer.Start();
         SendButton.IsEnabled = false;
         StopButton.Visibility = Visibility.Visible;
+        SetConfigControlsEnabled(false);
 
         try
         {
@@ -1545,6 +1581,7 @@ public sealed partial class AiPlaygroundPage : Page, ILocalizablePage
             _chatRunning = false;
             SendButton.IsEnabled = true;
             StopButton.Visibility = Visibility.Collapsed;
+            SetConfigControlsEnabled(true);
             _chatCts.Dispose();
             _chatCts = null;
             PersistActiveSession();

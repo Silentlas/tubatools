@@ -184,8 +184,9 @@ public static class AiRuntimeService
     public static bool IsProviderRegistered(string name) => RegisteredProviders.Contains(name);
 
     /// <summary>
-    /// 只注册「已安装」（ReadyState != NotPresent）的加速包，绝不触发下载 —— 供启动后台预热，
-    /// 避免用户每次开程序都要手动点一次「启用并注册」。单个 EP 失败不影响其余，全程静默。
+    /// 只注册「已安装」（ReadyState != NotPresent）的加速包，绝不触发下载。
+    /// 由 <see cref="EnsureProvidersRegisteredAsync"/> 在首次使用本地推理前调用，避免用户每次
+    /// 开程序都要手动点一次「启用并注册」。单个 EP 失败不影响其余，全程静默。
     /// </summary>
     public static async Task RegisterInstalledProvidersAsync()
     {
@@ -206,6 +207,19 @@ public static class AiRuntimeService
             }
         }
         catch { }
+    }
+
+    private static int _providersRegisteredOnce;
+
+    /// <summary>
+    /// 按需注册本机已安装的加速包（进程内只执行一次）。EP 注册是进程级的、进程结束即失效，
+    /// 且注册动作会加载 Windows ML 原生运行时——启动期不再自动执行，改为首次打开本地推理入口
+    /// （本地AI试炼场 / AI 助手选本地模型）时调用，保证「不用 AI 就零加载零注册」。
+    /// </summary>
+    public static async Task EnsureProvidersRegisteredAsync()
+    {
+        if (Interlocked.Exchange(ref _providersRegisteredOnce, 1) == 1) return;
+        await RegisterInstalledProvidersAsync();
     }
 
     /// <summary>安装（按需下载）并注册单个 EP。</summary>

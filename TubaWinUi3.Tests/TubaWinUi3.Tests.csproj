@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net10.0-windows10.0.26100.0</TargetFramework>
@@ -18,6 +18,17 @@
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
   </ItemGroup>
+
+
+  <!-- ONNX Runtime GenAI 包用 None + CopyToOutputDirectory 硬拷原生库，ExcludeAssets 管不到：
+       测试输出同样不需要这些原生库（测试不跑本地推理），构建后从输出目录删除。 -->
+  <Target Name="StripAiRuntimeNativeCopiesForTests" AfterTargets="Build"
+          Condition="'$(BundleAiRuntime)' != 'true'">
+    <ItemGroup>
+      <_AiRuntimeLeftoverTests Include="$(OutDir)onnxruntime-genai.dll;$(OutDir)onnxruntime-genai-cuda.dll" />
+    </ItemGroup>
+    <Delete Files="@(_AiRuntimeLeftoverTests)" TreatErrorsAsWarnings="true" />
+  </Target>
 
   <ItemGroup>
     <Using Include="Xunit" />

@@ -143,9 +143,6 @@
   <data name="MainWindow_SearchPlaceholder.PlaceholderText" xml:space="preserve">
     <value>Search tools and settings...</value>
   </data>
-  <data name="MainWindow_AiButton.ToolTip" xml:space="preserve">
-    <value>AI Assistant</value>
-  </data>
   <data name="MainWindow_NewbieTutorialButton.ToolTip" xml:space="preserve">
     <value>Getting Started</value>
   </data>
@@ -166,9 +163,6 @@
   </data>
   <data name="MainWindow_NavCommunity.Content" xml:space="preserve">
     <value>Community</value>
-  </data>
-  <data name="MainWindow_AiButton" xml:space="preserve">
-    <value>AI Assistant</value>
   </data>
   <data name="MainWindow_NewbieTutorialButton" xml:space="preserve">
     <value>Getting Started</value>
@@ -684,144 +678,6 @@
   <data name="Settings_ActiveIntercept_Title.Text" xml:space="preserve">
     <value>Active intercept</value>
   </data>
-  <data name="Settings_Ai_Status.Text" xml:space="preserve">
-    <value>Configure an AI provider and model to enable AI features</value>
-  </data>
-  <data name="Settings_Ai_Title.Text" xml:space="preserve">
-    <value>AI service</value>
-  </data>
-  <data name="Settings_AiAddModel_Button.Text" xml:space="preserve">
-    <value>Add</value>
-  </data>
-  <data name="Settings_AiApiKey_GetButton.Text" xml:space="preserve">
-    <value>Get API Key</value>
-  </data>
-  <data name="Settings_AiApiKey_Hint" xml:space="preserve">
-    <value>API key, stored securely on this device</value>
-  </data>
-  <data name="Settings_AiApiKey_Hint.Text" xml:space="preserve">
-    <value>API key, stored securely on this device</value>
-  </data>
-  <data name="Settings_AiConfigured" xml:space="preserve">
-    <value>Configured: {0} · {1}</value>
-  </data>
-  <data name="Settings_AiDefaultModel_Desc.Text" xml:space="preserve">
-    <value>The model selected automatically when starting a new chat</value>
-  </data>
-  <data name="Settings_AiDefaultModel_Title.Text" xml:space="preserve">
-    <value>Default model</value>
-  </data>
-  <data name="Settings_AiEndpoint_Desc.Text" xml:space="preserve">
-    <value>Base URL of the OpenAI-compatible API (locked for presets; leave blank for custom providers to use the built-in gateway)</value>
-  </data>
-  <data name="Settings_AiEndpoint_Title.Text" xml:space="preserve">
-    <value>API endpoint</value>
-  </data>
-  <data name="Settings_AiKeyHintZen" xml:space="preserve">
-    <value>API Key (optional): leave blank for the anonymous free tier (low quota); signing in raises the quota significantly</value>
-  </data>
-  <data name="Settings_AiModels_Desc.Text" xml:space="preserve">
-    <value>Preset or custom model IDs, switchable any time in the AI chat</value>
-  </data>
-  <data name="Settings_AiModels_Title.Text" xml:space="preserve">
-    <value>Models</value>
-  </data>
-  <data name="Settings_AiNewModel_Placeholder.PlaceholderText" xml:space="preserve">
-    <value>Enter a model ID, e.g. deepseek-chat</value>
-  </data>
-  <data name="Settings_AiProvider_AddButton.Text" xml:space="preserve">
-    <value>New custom</value>
-  </data>
-  <data name="Settings_AiProvider_Desc.Text" xml:space="preserve">
-    <value>Built-in DeepSeek / Xiaomi MiMo / OpenCode Zen / Local model presets; custom providers can be renamed and deleted</value>
-  </data>
-  <data name="Settings_AiProvider_DeleteButton.Text" xml:space="preserve">
-    <value>Delete</value>
-  </data>
-  <data name="Settings_AiProvider_DeleteTitle" xml:space="preserve">
-    <value>Delete provider</value>
-  </data>
-  <data name="Settings_AiProvider_DeleteConfirm" xml:space="preserve">
-    <value>Delete provider "{0}"? This cannot be undone.</value>
-  </data>
-  <data name="Settings_AiProvider_LocalHint" xml:space="preserve">
-    <value>Local model: download/import chat models in the "Local AI Playground" model library. Only the AI assistant uses local inference; other AI features still use the built-in gateway.</value>
-  </data>
-  <data name="Settings_AiProvider_NamePlaceholder.PlaceholderText" xml:space="preserve">
-    <value>Provider name</value>
-  </data>
-  <data name="Settings_AiProvider_ResetButton.Text" xml:space="preserve">
-    <value>Reset to default</value>
-  </data>
-  <data name="Settings_AiProvider_Title.Text" xml:space="preserve">
-    <value>AI provider</value>
-  </data>
-  <data name="Settings_AiTest_Button" xml:space="preserve">
-    <value>Test connection</value>
-  </data>
-  <data name="Settings_AiTest_Button.Text" xml:space="preserve">
-    <value>Test connection</value>
-  </data>
-  <data name="Settings_AiTestFailed" xml:space="preserve">
-    <value>Connection failed</value>
-  </data>
-  <data name="Settings_AiTestFailedDialogTitle" xml:space="preserve">
-    <value>AI connection test failed</value>
-  </data>
-  <data name="Settings_AiTestFailedStatus" xml:space="preserve">
-    <value>Connection failed: {0}</value>
-  </data>
-  <data name="Settings_AiTesting" xml:space="preserve">
-    <value>Testing...</value>
-  </data>
-  <data name="Settings_AiTestSuccess" xml:space="preserve">
-    <value>Connected</value>
-  </data>
-  <data name="Settings_AiTestSuccessStatus" xml:space="preserve">
-    <value>AI service configured, connection test succeeded</value>
-  </data>
-  <data name="Settings_AiUsingDefaultModel" xml:space="preserve">
-    <value>⚠️ Using the built-in default model: expect queues and rate limits with lower quality. DeepSeek V4 Pro is recommended.</value>
-  </data>
-  <data name="Settings_AiZen_Desc.Text" xml:space="preserve">
-    <value>Free models (such as deepseek-v4-flash-free, mimo-v2.5-free) cost nothing; the anonymous quota is low (~2 rounds in practice), and signing in with an API Key raises it significantly.</value>
-  </data>
-  <data name="Settings_AiZen_LoginButton" xml:space="preserve">
-    <value>Sign in and get Key</value>
-  </data>
-  <data name="Settings_AiZen_LoginButton.Text" xml:space="preserve">
-    <value>Sign in and get Key</value>
-  </data>
-  <data name="Settings_AiZen_RefreshButton" xml:space="preserve">
-    <value>Refresh free models</value>
-  </data>
-  <data name="Settings_AiZen_RefreshButton.Text" xml:space="preserve">
-    <value>Refresh free models</value>
-  </data>
-  <data name="Settings_AiZen_Title.Text" xml:space="preserve">
-    <value>OpenCode Zen free models</value>
-  </data>
-  <data name="Settings_AiZenGetKeyFailed" xml:space="preserve">
-    <value>Failed to get Key: {0}</value>
-  </data>
-  <data name="Settings_AiZenHasKey" xml:space="preserve">
-    <value>Key configured: {0} (higher quota)</value>
-  </data>
-  <data name="Settings_AiZenNoKey" xml:space="preserve">
-    <value>No Key configured (low anonymous quota)</value>
-  </data>
-  <data name="Settings_AiZenRefreshed" xml:space="preserve">
-    <value>Refreshed {0} free models</value>
-  </data>
-  <data name="Settings_AiZenRefreshFailed" xml:space="preserve">
-    <value>Refresh failed: {0}</value>
-  </data>
-  <data name="Settings_AiZenRefreshing" xml:space="preserve">
-    <value>Refreshing...</value>
-  </data>
-  <data name="Settings_AiZenWaitingLogin" xml:space="preserve">
-    <value>Waiting for sign-in...</value>
-  </data>
   <data name="Settings_AllFilesFilter" xml:space="preserve">
     <value>All files</value>
   </data>
@@ -1252,10 +1108,10 @@
     <value>Signed in as {0}</value>
   </data>
   <data name="Settings_HardwareAi_Desc.Text" xml:space="preserve">
-    <value>Hardware display options, data source, AI service configuration</value>
+    <value>Hardware display options and data sources</value>
   </data>
   <data name="Settings_HardwareAi_Title.Text" xml:space="preserve">
-    <value>Hardware &amp; AI</value>
+    <value>Hardware</value>
   </data>
   <data name="Settings_HardwareFitScreen_Desc.Text" xml:space="preserve">
     <value>Auto-scale so all hardware information fits on one screen; disable to allow scrolling</value>
@@ -1290,7 +1146,7 @@
   <data name="Settings_HttpDownloadPath_Title.Text" xml:space="preserve">
     <value>Save location</value>
   </data>
-  <data name="Settings_HttpDownloadResetPath_Button.ToolTipService.ToolTip" xml:space="preserve">
+  <data name="Settings_HttpDownloadResetPath_Button.ToolTip" xml:space="preserve">
     <value>Restore default path</value>
   </data>
   <data name="Settings_HttpDownloadUrl_Desc.Text" xml:space="preserve">
@@ -1463,12 +1319,6 @@
   </data>
   <data name="Settings_RememberWindow_Title.Text" xml:space="preserve">
     <value>Remember window position and size</value>
-  </data>
-  <data name="Settings_SearchApiKey_Desc.Text" xml:space="preserve">
-    <value>uapis.cn search API key (leave blank to use the free quota)</value>
-  </data>
-  <data name="Settings_SearchApiKey_Title.Text" xml:space="preserve">
-    <value>Search API key</value>
   </data>
   <data name="Settings_SearchIndex_Desc.Text" xml:space="preserve">
     <value>Search a tool name (e.g. CPU-Z) in the Start menu to launch it directly without opening the toolbox; duplicate versions are deduplicated, and shortcuts are cleaned up when disabled</value>
@@ -5248,4 +5098,10 @@ Fields: label class_id score x y w h; Functions: count/contains/startsWith/endsW
   <data name="MS_StandardHint" xml:space="preserve"><value>Trim background working sets in your session, then purge standby. Foreground, self, critical and protected processes are skipped. Apps stay open; reloads may briefly stutter, and private commit remains.</value></data>
   <data name="MS_DeepHint" xml:space="preserve"><value>Includes standard cleanup, file-cache trimming and modified-page writeback requests. Disk I/O and reload time may increase. No apps are closed or pagefiles deleted; application leaks are not fixed.</value></data>
   <data name="MS_LightHint" xml:space="preserve"><value>Only purge low-priority standby cache; other caches and working sets remain, so gains may be small.</value></data>
+  <data name="Settings_ProxyTesting" xml:space="preserve">
+    <value>Testing...</value>
+  </data>
+  <data name="Settings_ProxyTestFailed" xml:space="preserve">
+    <value>Connection failed</value>
+  </data>
 </root>

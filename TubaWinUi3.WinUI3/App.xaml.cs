@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using System.Security.Principal;
 using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
@@ -36,11 +36,10 @@ public partial class App : Application
         Environment.SetEnvironmentVariable("MICROSOFT_WINDOWSAPPRUNTIME_BASE_DIRECTORY", AppContext.BaseDirectory);
 
         // 切勿设置 WEBVIEW2_USER_DATA_FOLDER：它优先级高于一切，会覆盖进程内所有 WebView2 环境
-        // 的用户数据目录（包括 CreateWithOptionsAsync 显式传入的 userDataFolder 和第三方组件自建的
-        // 默认环境），把工具箱自己那套与 FieldCure ChatPanel 那套挤进同一目录；而一个 UDF 同时只能
-        // 有一个会话，后创建的环境会静默失败（返回 null 环境，不抛异常），表现为 AI 面板收不到消息、
-        // 消息区空白。工具箱自己的 WebView2 统一经 WebView2EnvironmentService.GetAsync() 指定可写
-        // 目录（%LocalAppData%\TubaWinUi3\WebView2），各套环境各用各的目录才互不干扰。
+        // 的用户数据目录（包括 CreateWithOptionsAsync 显式传入的 userDataFolder），把不同用途的
+        // WebView2 挤进同一目录；而一个 UDF 同时只能有一个会话，后创建的环境会静默失败（返回
+        // null 环境，不抛异常），表现为页面收不到消息、内容区空白。工具箱自己的 WebView2 统一经
+        // WebView2EnvironmentService.GetAsync() 指定可写目录（%LocalAppData%\TubaWinUi3\WebView2）。
         InitializeComponent();
 
         // LiveCharts/SkiaSharp 不再于启动时初始化：首个图表页面首次访问时才配置（ChartInitializer）。
@@ -51,11 +50,6 @@ public partial class App : Application
         // 匿名遥测（在线用户统计 + 错误日志）：默认开启，可在设置中关闭。
         // 初始化只构建对象、不做网络等待，上传全在后台进行，失败静默落盘续传。
         TelemetryService.Initialize();
-
-        // AI 助手：接上 FieldCure 组件库的诊断回调。组件内部的失败（WebView2 环境创建失败、
-        // 渲染被就绪守卫拦下、脚本异常等）默认完全静默，只会表现为"字没了、什么都没发生"；
-        // 接上后统一落盘 <DataDir>\AiAssistant\diag.log，正式版也能抓到真身。
-        AiDiagnosticsLog.Initialize();
 
         // 界面语言必须在任何打了 Uid 的控件创建前就绪（MainWindow 在 OnLaunched 里创建）。
         LocalizationService.Initialize();
@@ -68,8 +62,6 @@ public partial class App : Application
         CloseToTrayService.AttachSessionEndingWatch();
 
         BuiltinToolRegistry.RegisterDefaults();
-        AgentToolRegistry.RegisterDefaults();
-        AgentSkillRegistry.RegisterDefaults();
 
         AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
         TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
@@ -435,7 +427,6 @@ public partial class App : Application
         _window = new MainWindow();
         _window.Activate();
         ToolItem.SetUIDispatcher(_window.DispatcherQueue);
-        BrowserAutomationService.Initialize(_window.DispatcherQueue);
 
         // 连接手机：订阅消息/任务事件弹原生通知、注册 Toast 点击回跳、监听激活请求。
         PhoneLinkNotifier.Initialize();
@@ -617,19 +608,18 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// 启动失败兜底：把异常写进可上报的日志（错误报告打包会收录 %TEMP%\app_crash.log），
+    /// 启动失败兜底：把异常写进可上报的日志（错误报告打包会收录 数据目录 Logs/app_crash.log），
     /// 并尽力给用户一个能复制堆栈/打包日志/重新打开的窗口，而不是静默闪退。
     /// </summary>
     private void HandleLaunchFailure(Exception ex)
     {
-        var crashLogPath = Path.Combine(Path.GetTempPath(), "app_crash.log");
         var detail = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff}] 启动失败（App.OnLaunched）:\n" +
                      $"版本: {UpdateService.CurrentVersion}  打包: {RuntimeHelper.IsMsixPackaged}  " +
                      $"管理员: {IsRunningAsAdmin()}  系统: {WindowsVersionText()}\n" +
                      $"程序: {Environment.ProcessPath}\n" +
                      $"{ex}\n" + new string('-', 80) + "\n";
 
-        try { File.AppendAllText(crashLogPath, detail); } catch { }
+        DiagnosticLogService.AppendCrash(detail);
         try { Services.GameOverlayAutoService.Log($"启动失败: {ex.Message}\n{ex.StackTrace}"); } catch { }
         Debug.WriteLine(detail);
 
@@ -651,7 +641,7 @@ public partial class App : Application
         {
             MessageBoxW(IntPtr.Zero,
                 $"图吧工具箱启动失败：\n\n{ex.GetType().Name}: {ex.Message}\n\n" +
-                $"诊断日志：{crashLogPath}\n" +
+                $"诊断日志：{DiagnosticLogService.CrashLogPath}\n" +
                 "请在「设置 → 错误报告」中打包日志并反馈。",
                 "图吧工具箱", MB_OK | MB_ICONERROR);
         }
@@ -800,11 +790,16 @@ public partial class App : Application
                 return Task.CompletedTask;
             });
         }
+        _ = DelayThenRunAsync(TimeSpan.FromSeconds(30), () => Task.Run(() =>
+        {
+            try { DiagnosticLogService.Prepare(); } catch { }
+            UpdateService.PruneDownloadedUpdates();
+            TempCleanupService.CleanTempFiles(olderThanUtc: DateTime.UtcNow.AddDays(-7));
+        }));
         _ = Task.Run(() => ConfigManager.AutoMigratePathsIfNeeded());
 
-        // 加速包（NPU/GPU 执行提供程序）的注册是进程级的，进程结束即失效，导致每次启动都要手动
-        // 点一次。这里在后台静默注册「已安装」的加速包（绝不触发下载），用户无需再手动操作。
-        _ = DelayThenRunAsync(TimeSpan.FromSeconds(8), () => Services.AiPlayground.AiRuntimeService.RegisterInstalledProvidersAsync());
+        // AI 运行库相关注册一律按需：加速包（NPU/GPU EP）注册会加载 Windows ML 原生运行时，
+        // 改为首次使用本地推理前调用 AiRuntimeService.EnsureProvidersRegisteredAsync（见 AiRuntimeGate）。
 
         // 规则：分类下没有工具就删除。启动时清理历史遗留的空白分类目录
         // （扫描放后台线程，删除与设置写入回 UI 线程）。
@@ -1182,8 +1177,7 @@ public partial class App : Application
         try
         {
             // 追加而非覆盖：连续崩溃时历史记录都在
-            System.IO.File.AppendAllText(
-                System.IO.Path.Combine(System.IO.Path.GetTempPath(), "app_crash.log"), detail);
+            DiagnosticLogService.AppendCrash(detail);
             try
             {
                 Services.GameOverlayAutoService.Log($"WinUI 未处理异常: {e.Message}\n{e.Exception?.StackTrace}");

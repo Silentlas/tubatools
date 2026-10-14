@@ -20,7 +20,7 @@ public sealed class LlmChatRunner : IDisposable
     private Model? _model;
     private Tokenizer? _tokenizer;
     private TokenizerStream? _stream;
-    private readonly SemaphoreSlim _generateLock = new(1, 1);
+    private readonly GenerationGate _gate = new();
 
     public bool IsLoaded => _model is not null;
 
@@ -57,6 +57,7 @@ public sealed class LlmChatRunner : IDisposable
     public void Load(string modelDir, string? provider = null, string? deviceType = null, string? autoNote = null)
     {
         Unload();
+        _gate.Reset(); // Unload 会取消生命周期，重装（同一实例复用）时需要重新武装
         EnsureOgaHandle();
 
         ContextBudgetTokens = LlmContextBudget.ResolveEffectiveBudget(
@@ -103,6 +104,11 @@ public sealed class LlmChatRunner : IDisposable
 
     public void Unload()
     {
+        // 先取消在途生成并有界等待它退出，再销毁 native 对象：生成线程直接读 genai 对象，
+        // 边生成边 Dispose 会让它在已释放的模型上继续跑（原生层 use-after-free，托管拦不住）。
+        // 超时（异常情况）则放弃本次销毁——绝不能拆仍在使用的对象。
+        if (!_gate.CancelAndWait(TimeSpan.FromSeconds(5))) return;
+
         try { _stream?.Dispose(); } catch { }
         try { _tokenizer?.Dispose(); } catch { }
         try { _model?.Dispose(); } catch { }
@@ -191,36 +197,58 @@ public sealed class LlmChatRunner : IDisposable
         if (_model is null || _tokenizer is null || _stream is null)
             throw new InvalidOperationException("模型尚未加载。");
 
-        await _generateLock.WaitAsync(ct).ConfigureAwait(false);
+        // 进入门：卸载方（Unload/Dispose）会先取消本段生命周期并有界等待它退出，才销毁 native 对象
+        await _gate.EnterAsync(ct).ConfigureAwait(false);
+
         var channel = Channel.CreateUnbounded<string>(
             new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
 
-        // 上下文预算：prompt + 生成都算在 max_length 内。
-        // 两处硬约束：(1) ORT 按 max_length **一次性预分配** KV cache，超量直接分配失败（数十 GB）；
-        // (2) ORT 校验 prompt 长度用的是**真实分词数**，不是字符/估算数——估算偏差会让
-        //     真实 prompt 超过 max_length（"input_ids size … exceeds max length"）。
-        // 因此这里一律用真实 tokenizer 计数。
-        var tokenizer = _tokenizer;
-        var budget = ContextBudgetTokens;
-
-        int CountTokens(string text)
+        Model model;
+        Tokenizer tokenizer;
+        TokenizerStream stream;
+        CancellationTokenSource link;
+        CancellationToken token;
+        int promptTokens;
+        int effectiveMaxNew;
+        try
         {
-            if (string.IsNullOrEmpty(text)) return 0;
-            using var seq = tokenizer.Encode(text);
-            return seq[0].Length;
-        }
+            // 上下文预算：prompt + 生成都算在 max_length 内。
+            // 两处硬约束：(1) ORT 按 max_length **一次性预分配** KV cache，超量直接分配失败（数十 GB）；
+            // (2) ORT 校验 prompt 长度用的是**真实分词数**，不是字符/估算数——估算偏差会让
+            //     真实 prompt 超过 max_length（"input_ids size … exceeds max length"）。
+            // 因此这里一律用真实 tokenizer 计数。
+            // 持门期间字段不会被卸载，捕获为局部变量供 worker 使用（消除字段竞态）。
+            model = _model;
+            tokenizer = _tokenizer;
+            stream = _stream;
+            link = CancellationTokenSource.CreateLinkedTokenSource(ct, _gate.Lifetime);
+            token = link.Token;
+            var budget = ContextBudgetTokens;
 
-        prompt = LlmContextBudget.TruncateToTokens(
-            prompt, Math.Max(256, budget - 32), CountTokens, out _);
-        var promptTokens = Math.Max(1, CountTokens(prompt));
-        var roomForNew = Math.Max(16, budget - promptTokens);
-        var effectiveMaxNew = Math.Min(Math.Clamp(maxNewTokens, 16, 8192), roomForNew);
+            int CountTokens(string text)
+            {
+                if (string.IsNullOrEmpty(text)) return 0;
+                using var seq = tokenizer.Encode(text);
+                return seq[0].Length;
+            }
+
+            prompt = LlmContextBudget.TruncateToTokens(
+                prompt, Math.Max(256, budget - 32), CountTokens, out _);
+            promptTokens = Math.Max(1, CountTokens(prompt));
+            var roomForNew = Math.Max(16, budget - promptTokens);
+            effectiveMaxNew = Math.Min(Math.Clamp(maxNewTokens, 16, 8192), roomForNew);
+        }
+        catch
+        {
+            _gate.Exit();
+            throw;
+        }
 
         var loop = Task.Run(() =>
         {
             try
             {
-                using var generatorParams = new GeneratorParams(_model);
+                using var generatorParams = new GeneratorParams(model);
                 // max_length 为总长度（真实 prompt 分词数 + 生成上限），两者都夹在预算内
                 generatorParams.SetSearchOption(
                     "max_length", (double)(promptTokens + effectiveMaxNew));
@@ -234,17 +262,17 @@ public sealed class LlmChatRunner : IDisposable
                     generatorParams.SetSearchOption("top_p", Math.Clamp(topP, 0.05, 1.0));
                 }
 
-                using var sequences = _tokenizer.Encode(prompt);
-                using var generator = new Generator(_model, generatorParams);
+                using var sequences = tokenizer.Encode(prompt);
+                using var generator = new Generator(model, generatorParams);
                 generator.AppendTokenSequences(sequences);
 
                 var soFar = new StringBuilder();
                 while (!generator.IsDone())
                 {
-                    ct.ThrowIfCancellationRequested();
+                    token.ThrowIfCancellationRequested();
                     generator.GenerateNextToken();
                     var sequence = generator.GetSequence(0);
-                    var piece = _stream.Decode(sequence[^1]);
+                    var piece = stream.Decode(sequence[^1]);
                     if (string.IsNullOrEmpty(piece)) continue;
                     soFar.Append(piece);
                     if (LlmPromptBuilder.FindStopMarker(soFar) >= 0) break;
@@ -262,7 +290,8 @@ public sealed class LlmChatRunner : IDisposable
             }
             finally
             {
-                _generateLock.Release();
+                link.Dispose();
+                _gate.Exit();
             }
         }, CancellationToken.None);
 
@@ -282,7 +311,7 @@ public sealed class LlmChatRunner : IDisposable
     public void Dispose()
     {
         Unload();
-        _generateLock.Dispose();
+        _gate.Dispose();
     }
 }
 #else

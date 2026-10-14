@@ -159,11 +159,14 @@ public static class StorageUsageService
         items.Add(FileItem(StorageGroupKind.Log, "error-reports", "错误报告存档",
             "崩溃与异常上报的存档，用于反馈问题。", Path.Combine(dataDir, "ErrorReports")));
         items.Add(FileItem(StorageGroupKind.Log, "crash-log", "崩溃日志",
-            "系统临时目录中的 app_crash.log。", Path.Combine(Path.GetTempPath(), "app_crash.log")));
+            "应用数据目录中的崩溃记录。", DiagnosticLogService.CrashLogPath));
+
+        items.Add(FileItem(StorageGroupKind.Log, "startup-log", "启动诊断日志",
+            "最近一次启动的诊断记录。", DiagnosticLogService.StartupLogPath));
 
         // ── 系统临时目录残留 ────────────────────────────────
         items.Add(MultiItem(StorageGroupKind.Temp, "temp", "系统临时文件",
-            "更新包、工具暂存、文档转换中间产物、崩溃报告等在 %TEMP% 中的残留，正在使用中的会被跳过。",
+            "更新包、工具暂存、文档转换中间产物等在 %TEMP% 中的残留，正在使用中的会被跳过。",
             TempCleanupService.EnumerateAppTempEntries()));
 
         // ── 个人数据：默认不勾选 ─────────────────────────────

@@ -197,7 +197,10 @@ public static class ErrorReportService
         AddLog("game_overlay_auto.log", Path.Combine(dataDir, "game_overlay_auto.log"));
         AddLog("stress_test.log", Path.Combine(dataDir, "stress_test.log"));
         AddLog("backend.log", Path.Combine(dataDir, "active_intercept", "backend.log"));
-        AddLog("app_crash.log", Path.Combine(tempDir, "app_crash.log"));
+        AddLog("app_crash.log", DiagnosticLogService.CrashLogPath);
+        AddLog("startup_trace.log", DiagnosticLogService.StartupLogPath);
+        AddLog("legacy-app_crash.log", Path.Combine(tempDir, "app_crash.log"));
+        AddLog("legacy-startup_trace.log", Path.Combine(tempDir, "startup_trace.log"));
 
         try
         {

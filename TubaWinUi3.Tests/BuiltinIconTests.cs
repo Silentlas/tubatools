@@ -18,6 +18,8 @@ public class BuiltinIconTests
     /// <summary>
     /// 注册表是全局静态的，且被同集合的其他测试清空/填充过；
     /// 这里先清空再注册默认项，拿到的一定是完整的默认集合。
+    /// 直接返回内部列表（不走用户可见性过滤）：图标回归关心"工具是否改名/删除"，
+    /// 与用户在设置里隐藏了哪个工具无关（否则会随本机 settings.json 飘红）。
     /// </summary>
     private static IReadOnlyList<IBuiltinTool> DefaultTools()
     {
@@ -26,7 +28,7 @@ public class BuiltinIconTests
             .GetValue(null)!;
         list.Clear();
         BuiltinToolRegistry.RegisterDefaults();
-        return BuiltinToolRegistry.Tools;
+        return list;
     }
 
     [Fact]

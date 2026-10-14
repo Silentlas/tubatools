@@ -526,6 +526,25 @@ public static class UpdateService
 
     private static string UpdateTempDir => Path.Combine(Path.GetTempPath(), "TubaWinUi3_Update");
 
+    /// <summary>成功下载后替换旧包；启动时仅保留最近的完整包。断点续传产物不动。</summary>
+    internal static void PruneDownloadedUpdates(string? keepPath = null)
+    {
+        try
+        {
+            if (!Directory.Exists(UpdateTempDir)) return;
+            var packages = Directory.GetFiles(UpdateTempDir)
+                .Where(f => (f.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                          || f.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                         && !File.Exists(f + ".download") && !File.Exists(f + ".tubadl"))
+                .OrderByDescending(File.GetLastWriteTimeUtc).ToArray();
+            keepPath ??= packages.FirstOrDefault();
+            foreach (var file in packages)
+                if (!string.Equals(file, keepPath, StringComparison.OrdinalIgnoreCase))
+                    TempCleanupService.TryDeleteFile(file);
+        }
+        catch { }
+    }
+
     public static string? FindDownloadedUpdateFile()
     {
         try
@@ -533,6 +552,7 @@ public static class UpdateService
             var dir = UpdateTempDir;
             if (!Directory.Exists(dir)) return null;
             return Directory.GetFiles(dir)
+                .OrderByDescending(File.GetLastWriteTimeUtc)
                 .FirstOrDefault(f => f.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
                                   || f.EndsWith(".zip", StringComparison.OrdinalIgnoreCase));
         }
@@ -619,7 +639,11 @@ public static class UpdateService
                     throw lastError!;
                 },
                 destinationPath: tempDir,
-                postProcessor: new DelegatePostProcessor("更新就绪", (_, _, _, _) => Task.CompletedTask),
+                postProcessor: new DelegatePostProcessor("更新就绪", (file, _, _, _) =>
+                {
+                    PruneDownloadedUpdates(file);
+                    return Task.CompletedTask;
+                }),
                 description: $"GitCode 优先 · {asset.Name} · {FormatSize(asset.Size)}",
                 glyph: "\uE895");
 
@@ -639,7 +663,11 @@ public static class UpdateService
                 displayName: $"软件更新 v{CurrentVersion}",
                 downloadUrl: asset.OriginalDownloadUrl,
                 destinationPath: tempDir,
-                postProcessor: new DelegatePostProcessor("更新就绪", (_, _, _, _) => Task.CompletedTask),
+                postProcessor: new DelegatePostProcessor("更新就绪", (file, _, _, _) =>
+                {
+                    PruneDownloadedUpdates(file);
+                    return Task.CompletedTask;
+                }),
                 description: $"GitHub 下载 · {asset.Name} · {FormatSize(asset.Size)}",
                 glyph: "\uE895");
 

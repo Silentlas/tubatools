@@ -65,6 +65,18 @@ public class LocalizationTests
         Assert.All(en, kv => Assert.False(string.IsNullOrWhiteSpace(kv.Value), $"空值: {kv.Key}"));
     }
 
+    // 附加属性形式会使 WinUI3Localizer 扫描所有程序集的 GetTypes()，
+    // 提前解析尚未下载的 Windows ML 类型。提示文字统一走 Button 的自定义动作。
+    [Theory]
+    [InlineData("zh-CN")]
+    [InlineData("en-US")]
+    public void ReswKeys_DoNotTriggerAttachedPropertyAssemblyScan(string language)
+    {
+        var keys = LoadResw(language).Keys;
+        Assert.Empty(keys.Where(key => key.Count(c => c == '.') > 1));
+        Assert.Contains("Settings_HttpDownloadResetPath_Button.ToolTip", keys);
+    }
+
     [Fact]
     public void XamlUids_AreDefinedInChineseResources()
     {

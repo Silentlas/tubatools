@@ -23,8 +23,6 @@ public class TempCleanupTests
     [InlineData("tuba-ctxprobe-12345678-1234-1234-1234-123456789012.json")]
     [InlineData("tuba-battery-report.html")]
     [InlineData("tuba-winui3-setup.exe")] // tuba- 是各服务的统一临时命名空间，tuba- 开头即视为本软件产物
-    [InlineData("app_crash.log")]
-    [InlineData("app_crash.LOG")] // 大小写不敏感
     public void IsAppTempEntry_MatchesKnownNames(string name)
     {
         Assert.True(TempCleanupService.IsAppTempEntry(name));
@@ -41,6 +39,8 @@ public class TempCleanupTests
     [InlineData("randomfile.tmp")]
     [InlineData("esd_convert_temp_12345678")]
     [InlineData("wget.log")]
+    [InlineData("app_crash.log")]
+    [InlineData("startup_trace.log")]
     public void IsAppTempEntry_DoesNotMatchForeignNames(string name)
     {
         Assert.False(TempCleanupService.IsAppTempEntry(name));
@@ -55,5 +55,26 @@ public class TempCleanupTests
     public void FormatBytes_FormatsSizes(long bytes, string expected)
     {
         Assert.Equal(expected, TempCleanupService.FormatBytes(bytes));
+    }
+    [Fact]
+    public void AutomaticCleanup_PreservesRecentChildrenAndUpdates()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "cleanup-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            var child = Path.Combine(dir, "output.tmp");
+            File.WriteAllText(child, "data");
+            var cutoff = DateTime.UtcNow.AddDays(-7);
+            Directory.SetLastWriteTimeUtc(dir, cutoff.AddDays(-1));
+            Assert.False(TempCleanupService.IsExpiredEntry(dir, cutoff));
+            File.SetLastWriteTimeUtc(child, cutoff.AddDays(-1));
+            Assert.True(TempCleanupService.IsExpiredEntry(dir, cutoff));
+            var update = Path.Combine(dir, "TubaWinUi3_Update");
+            Directory.CreateDirectory(update);
+            Directory.SetLastWriteTimeUtc(update, cutoff.AddDays(-1));
+            Assert.False(TempCleanupService.IsExpiredEntry(update, cutoff));
+        }
+        finally { Directory.Delete(dir, true); }
     }
 }

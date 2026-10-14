@@ -7,7 +7,7 @@ namespace TubaWinUi3.Services;
 /// 避免应用安装在不可写目录（如 Program Files、MSIX 的 WindowsApps）时，
 /// WebView2 无法在 exe 旁创建默认的 *.exe.WebView2 数据目录而报错。
 /// 目录由此处显式指定，不经 WEBVIEW2_USER_DATA_FOLDER 环境变量——后者会连带覆盖
-/// 第三方组件（FieldCure ChatPanel 等）自建环境的目录，详见 App() 中的说明。
+/// 工具箱 WebView2 环境的用户数据目录（详见 App() 中的说明）。
 /// </summary>
 public static class WebView2EnvironmentService
 {

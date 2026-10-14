@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace TubaWinUi3.Services.AiPlayground;
@@ -189,14 +190,23 @@ public static class AiEpProbe
     /// <summary>
     /// 子进程入口：为给定模型在指定设备上编译一次会话（形状定死），把结果写入 <paramref name="outFile"/>。
     /// 成功返回 0；探测到不兼容时写失败结果并返回非 0（父进程据此回退）。崩溃由 OS 直接暴露为异常退出码。
+    /// 先加载 AI 运行库再进入 <see cref="RunChildCore"/>：运行库 DLL 不在应用目录时，
+    /// 类型解析必须在解析器就绪之后才发生（JIT 安全），否则 RunChildCore 的 JIT 会直接抛异常。
     /// </summary>
     internal static void RunChild(string modelPath, string epName, string deviceType, int height, int width, string outFile)
+    {
+        Services.AiRuntime.AiRuntimeLoader.EnsureLoaded();
+        RunChildCore(modelPath, epName, deviceType, height, width, outFile);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void RunChildCore(string modelPath, string epName, string deviceType, int height, int width, string outFile)
     {
         var result = new AiEpProbeResult { Ok = false, CheckedAt = DateTime.Now };
         try
         {
             // EP 注册是进程级的：子进程是全新进程，必须先把已安装加速包注册进本进程的 OrtEnv。
-            AiRuntimeService.RegisterInstalledProvidersAsync().GetAwaiter().GetResult();
+            AiRuntimeService.EnsureProvidersRegisteredAsync().GetAwaiter().GetResult();
 
             // 目标设备必须真实出现，否则探测会静默降级到 CPU 而给出假阳性
             // （YOLO 事故：探测在 CPU 上"成功"，主进程挂 NPU 时 0xC0000005 闪退）。

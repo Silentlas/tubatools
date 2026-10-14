@@ -11,6 +11,8 @@
     <Nullable>disable</Nullable>
     <LangVersion>latest</LangVersion>
     <PublishSingleFile>true</PublishSingleFile>
+    <!-- 兼容未完整支持 CET 的旧版 Windows / PE，构建与单文件发布均禁用 CET。 -->
+    <CetCompat>false</CetCompat>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <PublishTrimmed>false</PublishTrimmed>
     <SelfContained Condition="'$(RuntimeIdentifier)' != ''">true</SelfContained>

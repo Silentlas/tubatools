@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+<?xml version="1.0" encoding="utf-8" ?>
 <Page
     x:Class="TubaWinUi3.Pages.HardwarePage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -248,7 +248,6 @@
                     </StackPanel>
 
                     <StackPanel x:Name="HeaderButtons" Grid.Column="1" Orientation="Horizontal" Spacing="8">
-                        <Button Content="AI 分析本机" Click="AnalyzeHardware_Click" AutomationProperties.AutomationId="HardwareAnalyze" />
 
                         <Button
                             Padding="16,8"

@@ -143,9 +143,6 @@
   <data name="MainWindow_SearchPlaceholder.PlaceholderText" xml:space="preserve">
     <value>搜索工具、设置...</value>
   </data>
-  <data name="MainWindow_AiButton.ToolTip" xml:space="preserve">
-    <value>AI 助手</value>
-  </data>
   <data name="MainWindow_NewbieTutorialButton.ToolTip" xml:space="preserve">
     <value>新手教程</value>
   </data>
@@ -166,9 +163,6 @@
   </data>
   <data name="MainWindow_NavCommunity.Content" xml:space="preserve">
     <value>社区</value>
-  </data>
-  <data name="MainWindow_AiButton" xml:space="preserve">
-    <value>AI 助手</value>
   </data>
   <data name="MainWindow_NewbieTutorialButton" xml:space="preserve">
     <value>新手教程</value>
@@ -684,144 +678,6 @@
   <data name="Settings_ActiveIntercept_Title.Text" xml:space="preserve">
     <value>主动拦截流氓软件</value>
   </data>
-  <data name="Settings_Ai_Status.Text" xml:space="preserve">
-    <value>配置 AI 提供商与模型，启用 AI 智能功能</value>
-  </data>
-  <data name="Settings_Ai_Title.Text" xml:space="preserve">
-    <value>AI 服务配置</value>
-  </data>
-  <data name="Settings_AiAddModel_Button.Text" xml:space="preserve">
-    <value>添加</value>
-  </data>
-  <data name="Settings_AiApiKey_GetButton.Text" xml:space="preserve">
-    <value>获取 API Key</value>
-  </data>
-  <data name="Settings_AiApiKey_Hint" xml:space="preserve">
-    <value>API 密钥，将安全保存在本地</value>
-  </data>
-  <data name="Settings_AiApiKey_Hint.Text" xml:space="preserve">
-    <value>API 密钥，将安全保存在本地</value>
-  </data>
-  <data name="Settings_AiConfigured" xml:space="preserve">
-    <value>已配置：{0} · {1}</value>
-  </data>
-  <data name="Settings_AiDefaultModel_Desc.Text" xml:space="preserve">
-    <value>打开新对话时自动选中的模型</value>
-  </data>
-  <data name="Settings_AiDefaultModel_Title.Text" xml:space="preserve">
-    <value>默认模型</value>
-  </data>
-  <data name="Settings_AiEndpoint_Desc.Text" xml:space="preserve">
-    <value>OpenAI 兼容 API 的 Base URL（预设提供商已锁定；自定义留空则使用自带默认网关）</value>
-  </data>
-  <data name="Settings_AiEndpoint_Title.Text" xml:space="preserve">
-    <value>API 地址</value>
-  </data>
-  <data name="Settings_AiKeyHintZen" xml:space="preserve">
-    <value>API Key（可选）：留空使用匿名免费模型（额度低）；登录获取 Key 后额度大幅提升</value>
-  </data>
-  <data name="Settings_AiModels_Desc.Text" xml:space="preserve">
-    <value>预设或自定义模型标识，可在 AI 聊天界面随时切换</value>
-  </data>
-  <data name="Settings_AiModels_Title.Text" xml:space="preserve">
-    <value>模型列表</value>
-  </data>
-  <data name="Settings_AiNewModel_Placeholder.PlaceholderText" xml:space="preserve">
-    <value>输入模型标识，如 deepseek-chat</value>
-  </data>
-  <data name="Settings_AiProvider_AddButton.Text" xml:space="preserve">
-    <value>新建自定义</value>
-  </data>
-  <data name="Settings_AiProvider_Desc.Text" xml:space="preserve">
-    <value>内置 DeepSeek / 小米 MiMo / OpenCode Zen / 本地模型预设；自定义提供商可编辑名称、删除</value>
-  </data>
-  <data name="Settings_AiProvider_DeleteButton.Text" xml:space="preserve">
-    <value>删除</value>
-  </data>
-  <data name="Settings_AiProvider_DeleteTitle" xml:space="preserve">
-    <value>删除提供商</value>
-  </data>
-  <data name="Settings_AiProvider_DeleteConfirm" xml:space="preserve">
-    <value>确定删除提供商「{0}」？此操作不可恢复。</value>
-  </data>
-  <data name="Settings_AiProvider_LocalHint" xml:space="preserve">
-    <value>本地模型：对话在「本地 AI 试炼场」的模型库中下载/导入；仅 AI 助手使用本地推理，其他 AI 功能仍走自带网关。</value>
-  </data>
-  <data name="Settings_AiProvider_NamePlaceholder.PlaceholderText" xml:space="preserve">
-    <value>提供商名称</value>
-  </data>
-  <data name="Settings_AiProvider_ResetButton.Text" xml:space="preserve">
-    <value>恢复默认</value>
-  </data>
-  <data name="Settings_AiProvider_Title.Text" xml:space="preserve">
-    <value>AI 提供商</value>
-  </data>
-  <data name="Settings_AiTest_Button" xml:space="preserve">
-    <value>测试连接</value>
-  </data>
-  <data name="Settings_AiTest_Button.Text" xml:space="preserve">
-    <value>测试连接</value>
-  </data>
-  <data name="Settings_AiTestFailed" xml:space="preserve">
-    <value>连接失败</value>
-  </data>
-  <data name="Settings_AiTestFailedDialogTitle" xml:space="preserve">
-    <value>AI 连接测试失败</value>
-  </data>
-  <data name="Settings_AiTestFailedStatus" xml:space="preserve">
-    <value>连接失败：{0}</value>
-  </data>
-  <data name="Settings_AiTesting" xml:space="preserve">
-    <value>测试中...</value>
-  </data>
-  <data name="Settings_AiTestSuccess" xml:space="preserve">
-    <value>连接成功</value>
-  </data>
-  <data name="Settings_AiTestSuccessStatus" xml:space="preserve">
-    <value>AI 服务已配置，连接测试成功</value>
-  </data>
-  <data name="Settings_AiUsingDefaultModel" xml:space="preserve">
-    <value>⚠️ 使用自带默认模型，可能出现排队/限额满速，质量低下等问题。推荐使用 DeepSeek V4 Pro。</value>
-  </data>
-  <data name="Settings_AiZen_Desc.Text" xml:space="preserve">
-    <value>免费模型（如 deepseek-v4-flash-free、mimo-v2.5-free）无需付费；匿名使用额度较低（实测约 2 轮即限额），登录并填入 API Key 后额度大幅提升。</value>
-  </data>
-  <data name="Settings_AiZen_LoginButton" xml:space="preserve">
-    <value>登录并获取 Key</value>
-  </data>
-  <data name="Settings_AiZen_LoginButton.Text" xml:space="preserve">
-    <value>登录并获取 Key</value>
-  </data>
-  <data name="Settings_AiZen_RefreshButton" xml:space="preserve">
-    <value>刷新免费模型</value>
-  </data>
-  <data name="Settings_AiZen_RefreshButton.Text" xml:space="preserve">
-    <value>刷新免费模型</value>
-  </data>
-  <data name="Settings_AiZen_Title.Text" xml:space="preserve">
-    <value>OpenCode Zen 免费模型</value>
-  </data>
-  <data name="Settings_AiZenGetKeyFailed" xml:space="preserve">
-    <value>获取 Key 失败：{0}</value>
-  </data>
-  <data name="Settings_AiZenHasKey" xml:space="preserve">
-    <value>已配置 Key：{0}（额度更高）</value>
-  </data>
-  <data name="Settings_AiZenNoKey" xml:space="preserve">
-    <value>未配置 Key（匿名额度较低）</value>
-  </data>
-  <data name="Settings_AiZenRefreshed" xml:space="preserve">
-    <value>已刷新 {0} 个免费模型</value>
-  </data>
-  <data name="Settings_AiZenRefreshFailed" xml:space="preserve">
-    <value>刷新失败：{0}</value>
-  </data>
-  <data name="Settings_AiZenRefreshing" xml:space="preserve">
-    <value>刷新中...</value>
-  </data>
-  <data name="Settings_AiZenWaitingLogin" xml:space="preserve">
-    <value>等待登录...</value>
-  </data>
   <data name="Settings_AllFilesFilter" xml:space="preserve">
     <value>所有文件</value>
   </data>
@@ -1266,10 +1122,10 @@
     <value>已登录：{0}</value>
   </data>
   <data name="Settings_HardwareAi_Desc.Text" xml:space="preserve">
-    <value>硬件显示选项、数据源、AI 服务配置</value>
+    <value>硬件显示选项、数据源</value>
   </data>
   <data name="Settings_HardwareAi_Title.Text" xml:space="preserve">
-    <value>硬件与 AI</value>
+    <value>硬件</value>
   </data>
   <data name="Settings_HardwareFitScreen_Desc.Text" xml:space="preserve">
     <value>自动缩放使所有硬件信息在一屏内显示，关闭后允许滚动浏览</value>
@@ -1304,7 +1160,7 @@
   <data name="Settings_HttpDownloadPath_Title.Text" xml:space="preserve">
     <value>保存位置</value>
   </data>
-  <data name="Settings_HttpDownloadResetPath_Button.ToolTipService.ToolTip" xml:space="preserve">
+  <data name="Settings_HttpDownloadResetPath_Button.ToolTip" xml:space="preserve">
     <value>恢复默认路径</value>
   </data>
   <data name="Settings_HttpDownloadUrl_Desc.Text" xml:space="preserve">
@@ -1477,12 +1333,6 @@
   </data>
   <data name="Settings_RememberWindow_Title.Text" xml:space="preserve">
     <value>记住窗口位置和大小</value>
-  </data>
-  <data name="Settings_SearchApiKey_Desc.Text" xml:space="preserve">
-    <value>uapis.cn 搜索 API 密钥（留空使用免费额度）</value>
-  </data>
-  <data name="Settings_SearchApiKey_Title.Text" xml:space="preserve">
-    <value>搜索 API Key</value>
   </data>
   <data name="Settings_SearchIndex_Desc.Text" xml:space="preserve">
     <value>在开始菜单搜索工具名（如 CPU-Z）直接启动，无需打开工具箱；多版本自动去重，关闭时自动清理快捷方式</value>
@@ -5264,4 +5114,10 @@ else then stroke=#888888 visible=true
   <data name="MS_StandardHint" xml:space="preserve"><value>整理当前用户的后台进程工作集，再清空待机缓存。跳过前台、自身、系统关键和受保护进程；不关闭应用。程序稍后重新使用这些数据时可能短暂卡顿，私有提交不会释放。</value></data>
   <data name="MS_DeepHint" xml:space="preserve"><value>包含标准清理，并整理系统文件缓存、请求修改页写回。可能明显增加磁盘读写和重新加载时间。不会关闭程序或删除分页文件，也不能根治应用内存泄漏。</value></data>
   <data name="MS_LightHint" xml:space="preserve"><value>仅整理低优先级待机缓存；其他优先级缓存和进程工作集保持原样，收益可能很小。</value></data>
+  <data name="Settings_ProxyTesting" xml:space="preserve">
+    <value>测试中...</value>
+  </data>
+  <data name="Settings_ProxyTestFailed" xml:space="preserve">
+    <value>连接失败</value>
+  </data>
 </root>

@@ -813,8 +813,8 @@
                                     <FontIcon FontSize="20" Glyph="&#xE772;" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <StackPanel VerticalAlignment="Center" Spacing="2">
-                                    <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="硬件与 AI" l:Uids.Uid="Settings_HardwareAi_Title" />
-                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" Text="硬件显示选项、数据源、AI 服务配置" l:Uids.Uid="Settings_HardwareAi_Desc" />
+                                    <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="硬件" l:Uids.Uid="Settings_HardwareAi_Title" />
+                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" Text="硬件显示选项、数据源" l:Uids.Uid="Settings_HardwareAi_Desc" />
                                 </StackPanel>
                             </StackPanel>
                         </Expander.Header>
@@ -881,223 +881,7 @@
                                     </Grid>
                                 </Border>
 
-                                <Border x:Name="SettingsAiEndpointCard" Style="{StaticResource SettingsCardStyle}">
-                                    <Grid RowSpacing="12">
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                            <RowDefinition Height="Auto" />
-                                        </Grid.RowDefinitions>
-                                        <Grid ColumnSpacing="16">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource IconBorderStyle}">
-                                                <FontIcon FontSize="18" Glyph="&#xE945;" />
-                                            </Border>
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                                <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="AI 服务配置" l:Uids.Uid="Settings_Ai_Title" />
-                                                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" x:Name="AiConfigStatusText" FontSize="12" TextWrapping="Wrap" Text="配置 AI 提供商与模型，启用 AI 智能功能" l:Uids.Uid="Settings_Ai_Status" />
-                                            </StackPanel>
-                                        </Grid>
-                                        <Border Grid.Row="1" Padding="0,1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" />
 
-                                        <!-- 提供商 -->
-                                        <Grid Grid.Row="2" ColumnSpacing="16" RowSpacing="8">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource IconBorderStyle}">
-                                                <FontIcon FontSize="18" Glyph="&#xE774;" />
-                                            </Border>
-                                            <StackPanel Grid.Column="1" Spacing="8">
-                                                <StackPanel Spacing="2">
-                                                    <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="AI 提供商" l:Uids.Uid="Settings_AiProvider_Title" />
-                                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" TextWrapping="Wrap" Text="内置 DeepSeek / 小米 MiMo / OpenCode Zen / 本地模型预设；自定义提供商可编辑名称、删除" l:Uids.Uid="Settings_AiProvider_Desc" />
-                                                </StackPanel>
-                                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                                    <ComboBox x:Name="AiProviderCombo" MinWidth="200" MaxWidth="300" DisplayMemberPath="Name" SelectionChanged="AiProviderCombo_SelectionChanged" />
-                                                    <TextBox x:Name="AiProviderNameBox" MinWidth="150" MaxWidth="220" PlaceholderText="提供商名称" l:Uids.Uid="Settings_AiProvider_NamePlaceholder" TextChanged="AiProviderNameBox_TextChanged" />
-                                                    <Button x:Name="AiAddProviderButton" Padding="12,8" Click="AiAddProviderButton_Click">
-                                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                                            <FontIcon FontSize="12" Glyph="&#xE710;" />
-                                                            <TextBlock Text="新建自定义" FontSize="12" l:Uids.Uid="Settings_AiProvider_AddButton" />
-                                                        </StackPanel>
-                                                    </Button>
-                                                    <Button x:Name="AiDeleteProviderButton" Padding="12,8" Click="AiDeleteProviderButton_Click">
-                                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                                            <FontIcon FontSize="12" Glyph="&#xE74D;" />
-                                                            <TextBlock Text="删除" FontSize="12" l:Uids.Uid="Settings_AiProvider_DeleteButton" />
-                                                        </StackPanel>
-                                                    </Button>
-                                                    <Button x:Name="AiResetProviderButton" Padding="12,8" Click="AiResetProviderButton_Click">
-                                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                                            <FontIcon FontSize="12" Glyph="&#xE72C;" />
-                                                            <TextBlock Text="恢复默认" FontSize="12" l:Uids.Uid="Settings_AiProvider_ResetButton" />
-                                                        </StackPanel>
-                                                    </Button>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Grid>
-
-                                        <!-- API 地址 -->
-                                        <Grid Grid.Row="3" ColumnSpacing="16">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource IconBorderStyle}">
-                                                <FontIcon FontSize="18" Glyph="&#xE774;" />
-                                            </Border>
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                                <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="API 地址" l:Uids.Uid="Settings_AiEndpoint_Title" />
-                                                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" TextWrapping="Wrap" Text="OpenAI 兼容 API 的 Base URL（预设提供商已锁定；自定义留空则使用自带默认网关）" l:Uids.Uid="Settings_AiEndpoint_Desc" />
-                                            </StackPanel>
-                                            <TextBox x:Name="AiEndpointTextBox" Grid.Column="1" HorizontalAlignment="Right" MinWidth="280" MaxWidth="360" PlaceholderText="https://api.example.com/v1" TextChanged="AiEndpointTextBox_TextChanged" />
-                                        </Grid>
-
-                                        <!-- API Key -->
-                                        <Grid Grid.Row="4" ColumnSpacing="16">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource IconBorderStyle}">
-                                                <FontIcon FontSize="18" Glyph="&#xE72E;" />
-                                            </Border>
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                                <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="API Key" />
-                                                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" x:Name="AiApiKeyHintText" FontSize="12" TextWrapping="Wrap" Text="API 密钥，将安全保存在本地" l:Uids.Uid="Settings_AiApiKey_Hint" />
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                                                <PasswordBox x:Name="AiApiKeyBox" MinWidth="200" MaxWidth="280" PlaceholderText="sk-..." PasswordChanged="AiApiKeyBox_PasswordChanged" />
-                                                <Button x:Name="AiKeyLinkButton" Padding="12,8" Click="AiKeyLinkButton_Click">
-                                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                                        <FontIcon FontSize="12" Glyph="&#xE774;" />
-                                                        <TextBlock x:Name="AiKeyLinkText" Text="获取 API Key" FontSize="12" l:Uids.Uid="Settings_AiApiKey_GetButton" />
-                                                    </StackPanel>
-                                                </Button>
-                                                <Button x:Name="AiTestButton" Padding="12,8" Click="AiTestButton_Click">
-                                                    <StackPanel Orientation="Horizontal" Spacing="8">
-                                                        <FontIcon x:Name="AiTestIcon" FontSize="12" Glyph="&#xE73E;" />
-                                                        <TextBlock x:Name="AiTestButtonText" Text="测试连接" FontSize="12" l:Uids.Uid="Settings_AiTest_Button" />
-                                                    </StackPanel>
-                                                </Button>
-                                            </StackPanel>
-                                        </Grid>
-
-                                        <!-- 模型列表 -->
-                                        <Grid Grid.Row="5" ColumnSpacing="16" RowSpacing="8">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource IconBorderStyle}">
-                                                <FontIcon FontSize="18" Glyph="&#xE943;" />
-                                            </Border>
-                                            <StackPanel Grid.Column="1" Spacing="8">
-                                                <StackPanel Spacing="2">
-                                                    <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="模型列表" l:Uids.Uid="Settings_AiModels_Title" />
-                                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" TextWrapping="Wrap" Text="预设或自定义模型标识，可在 AI 聊天界面随时切换" l:Uids.Uid="Settings_AiModels_Desc" />
-                                                </StackPanel>
-                                                <ItemsControl x:Name="AiModelsList">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <Grid ColumnSpacing="8" Margin="0,0,0,4">
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="*" />
-                                                                    <ColumnDefinition Width="Auto" />
-                                                                </Grid.ColumnDefinitions>
-                                                                <TextBlock Text="{Binding DisplayText}" FontSize="14" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
-                                                                <Button Grid.Column="1" Padding="8,4" Click="AiModelDelete_Click" Tag="{Binding}">
-                                                                    <FontIcon Glyph="&#xE74D;" FontSize="12" />
-                                                                </Button>
-                                                            </Grid>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                                    <TextBox x:Name="AiNewModelBox" MinWidth="240" PlaceholderText="输入模型标识，如 deepseek-chat" l:Uids.Uid="Settings_AiNewModel_Placeholder" KeyDown="AiNewModelBox_KeyDown" />
-                                                    <Button x:Name="AiAddModelButton" Padding="12,8" Click="AiAddModelButton_Click">
-                                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                                            <FontIcon FontSize="12" Glyph="&#xE710;" />
-                                                            <TextBlock Text="添加" FontSize="12" l:Uids.Uid="Settings_AiAddModel_Button" />
-                                                        </StackPanel>
-                                                    </Button>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Grid>
-
-                                        <!-- 默认模型 -->
-                                        <Grid Grid.Row="6" ColumnSpacing="16">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource IconBorderStyle}">
-                                                <FontIcon FontSize="18" Glyph="&#xE7C4;" />
-                                            </Border>
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                                <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="默认模型" l:Uids.Uid="Settings_AiDefaultModel_Title" />
-                                                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" TextWrapping="Wrap" Text="打开新对话时自动选中的模型" l:Uids.Uid="Settings_AiDefaultModel_Desc" />
-                                            </StackPanel>
-                                            <ComboBox x:Name="AiDefaultModelCombo" Grid.Column="2" MinWidth="200" MaxWidth="300" DisplayMemberPath="DisplayText" SelectionChanged="AiDefaultModelCombo_SelectionChanged" />
-                                        </Grid>
-
-                                        <!-- OpenCode Zen 免费模型 -->
-                                        <Border x:Name="AiZenSection" Grid.Row="7" CornerRadius="8" Padding="12" Background="{ThemeResource SubtleFillColorSecondaryBrush}" Visibility="Collapsed">
-                                            <StackPanel Spacing="8">
-                                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                                    <FontIcon Glyph="&#xE77B;" FontSize="16" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                                                    <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="OpenCode Zen 免费模型" VerticalAlignment="Center" l:Uids.Uid="Settings_AiZen_Title" />
-                                                    <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" x:Name="AiZenStatusText" FontSize="12" VerticalAlignment="Center" />
-                                                </StackPanel>
-                                                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" TextWrapping="Wrap"
-                                                           Text="免费模型（如 deepseek-v4-flash-free、mimo-v2.5-free）无需付费；匿名使用额度较低（实测约 2 轮即限额），登录并填入 API Key 后额度大幅提升。"
-                                                           l:Uids.Uid="Settings_AiZen_Desc" />
-                                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                                    <Button x:Name="AiZenLoginButton" Padding="12,8" Click="AiZenLoginButton_Click">
-                                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                                            <FontIcon x:Name="AiZenLoginIcon" FontSize="12" Glyph="&#xE77B;" />
-                                                            <TextBlock x:Name="AiZenLoginText" Text="登录并获取 Key" FontSize="12" l:Uids.Uid="Settings_AiZen_LoginButton" />
-                                                        </StackPanel>
-                                                    </Button>
-                                                    <Button x:Name="AiZenRefreshButton" Padding="12,8" Click="AiZenRefreshButton_Click">
-                                                        <StackPanel Orientation="Horizontal" Spacing="8">
-                                                            <FontIcon x:Name="AiZenRefreshIcon" FontSize="12" Glyph="&#xE72C;" />
-                                                            <TextBlock x:Name="AiZenRefreshText" Text="刷新免费模型" FontSize="12" l:Uids.Uid="Settings_AiZen_RefreshButton" />
-                                                        </StackPanel>
-                                                    </Button>
-                                                </StackPanel>
-                                            </StackPanel>
-                                        </Border>
-
-                                        <Grid Grid.Row="8" ColumnSpacing="16" Margin="0,12,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource IconBorderStyle}">
-                                                <FontIcon FontSize="18" Glyph="&#xE721;" />
-                                            </Border>
-                                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-                                                <TextBlock Style="{StaticResource SectionHeaderStyle}" Text="搜索 API Key" l:Uids.Uid="Settings_SearchApiKey_Title" />
-                                                <TextBlock Foreground="{ThemeResource TextFillColorSecondaryBrush}" FontSize="12" TextWrapping="Wrap" Text="uapis.cn 搜索 API 密钥（留空使用免费额度）" l:Uids.Uid="Settings_SearchApiKey_Desc" />
-                                            </StackPanel>
-                                            <PasswordBox x:Name="SearchApiKeyBox" Grid.Column="1" HorizontalAlignment="Right" MinWidth="280" MaxWidth="360" PlaceholderText="uapi-..." PasswordChanged="SearchApiKeyBox_PasswordChanged" />
-                                        </Grid>
-                                    </Grid>
-                                </Border>
 
                             </StackPanel>
                             </ScrollViewer>
@@ -1269,7 +1053,7 @@
                                                         <TextBlock Text="浏览" l:Uids.Uid="Settings_HttpDownloadBrowse_Button" />
                                                     </StackPanel>
                                                 </Button>
-                                                <Button x:Name="HttpDownloadResetPathButton" Padding="12,8" Click="HttpDownloadResetPathButton_Click" ToolTipService.ToolTip="恢复默认路径" l:Uids.Uid="Settings_HttpDownloadResetPath_Button">
+                                                <Button x:Name="HttpDownloadResetPathButton" Padding="12,8" Click="HttpDownloadResetPathButton_Click" ToolTipService.ToolTip="恢复默认路径">
                                                     <FontIcon FontSize="12" Glyph="&#xE72C;" />
                                                 </Button>
                                             </StackPanel>

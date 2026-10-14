@@ -1386,13 +1386,6 @@
       ]
     },
     {
-      "match": "AI助手",
-      "builtin": "ai-assistant",
-      "categories": [
-        "其他工具"
-      ]
-    },
-    {
       "match": "Hosts编辑器",
       "builtin": "hosts-editor",
       "categories": [

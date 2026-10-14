@@ -215,7 +215,6 @@ public sealed partial class MainWindow : Window
         Title = title;
         AppTitleBar.Title = title;
 
-        AutomationProperties.SetName(AiQuickButton, LocalizationService.L("MainWindow_AiButton", "AI 助手"));
         AutomationProperties.SetName(NewbieTutorialButton, LocalizationService.L("MainWindow_NewbieTutorialButton", "新手教程"));
         AutomationProperties.SetName(DownloadQueueButton, LocalizationService.L("MainWindow_DownloadQueueButton", "下载队列"));
 
@@ -528,8 +527,9 @@ public sealed partial class MainWindow : Window
         // 残留会让下次启动的 FPS 采集失效；轮询定时器/自动覆盖层/未落盘记录一并收尾。
         try { LiteMonitorService.Instance.Dispose(); } catch { }
         try { GameOverlayAutoService.Instance.Stop(); } catch { }
-        // 本地 ONNX 模型句柄（AI 助手的「本地模型」提供商）显式释放
-        try { Services.Ai.Onnx.LocalModelRuntime.Unload(); } catch { }
+        // 本地 ONNX 模型句柄（AI 助手的「本地模型」提供商）显式释放；有界等待——
+        // 模型正在加载时绝不阻塞后面的托盘/单实例清理（超时则放弃，进程退出由内核回收）
+        try { Services.Ai.Onnx.LocalModelRuntime.TryUnload(TimeSpan.FromSeconds(3)); } catch { }
         // 托盘图标必须显式移除：进程退出后残留的图标要等鼠标划过去才消失
         try { TrayIconService.Dispose(); } catch { }
 
@@ -603,26 +603,6 @@ public sealed partial class MainWindow : Window
             };
         }
         _downloadFlyout.ShowAt(DownloadQueueButton);
-    }
-
-    private void AiQuickButton_Click(object sender, RoutedEventArgs e)
-    {
-        var flyout = new Flyout
-        {
-            Content = new AiQuickAskFlyout(),
-            Placement = FlyoutPlacementMode.BottomEdgeAlignedRight
-        };
-        // FlyoutPresenter 默认 MaxWidth=456（FlyoutThemeMaxWidth），会把内容钳在 456px；
-        // 覆盖 presenter 宽度/高度限制，让 850px 面板完整显示。
-        flyout.FlyoutPresenterStyle = new Style(typeof(FlyoutPresenter))
-        {
-            Setters =
-            {
-                new Setter(FlyoutPresenter.MaxWidthProperty, 880.0),
-                new Setter(FlyoutPresenter.MaxHeightProperty, 810.0)
-            }
-        };
-        flyout.ShowAt(AiQuickButton);
     }
 
     private void NewbieTutorialButton_Click(object sender, RoutedEventArgs e)

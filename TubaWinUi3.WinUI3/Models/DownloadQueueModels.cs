@@ -1,4 +1,4 @@
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.IO.Compression;
 using System.Runtime.CompilerServices;
 
@@ -202,6 +202,7 @@ public sealed class UpdateInstallProcessor : IDownloadPostProcessor
     public Task ExecuteAsync(string downloadedFilePath, string destinationPath,
         IProgress<string>? statusProgress, CancellationToken ct)
     {
+        TubaWinUi3.Services.UpdateService.PruneDownloadedUpdates(downloadedFilePath);
         var isExe = downloadedFilePath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
         var isZip = downloadedFilePath.EndsWith(".zip", StringComparison.OrdinalIgnoreCase);
 

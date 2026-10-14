@@ -639,7 +639,7 @@ public sealed partial class AiAssistantService
             // 这种空壳存档——它们点开必然空白，只会在历史列表里堆积。
             if (!HasRestorableContent(messages))
             {
-                AiDiagnosticsLog.Write("WARN ", $"[Host] 跳过无内容的会话存档 {id}（{messages.Count} 条，无可还原的 user/assistant 消息）");
+                TubaWinUi3.Services.Agent.AgentDebugLog.Info($"[Host] 跳过无内容的会话存档 {id}（{messages.Count} 条，无可还原的 user/assistant 消息）");
                 return;
             }
 
@@ -659,32 +659,6 @@ public sealed partial class AiAssistantService
             WriteJsonAtomic(msgPath, messages);
         }
         catch { }
-    }
-
-    /// <summary>保存会话展示记录（文本气泡 + 步骤链，按顺序恢复界面）。</summary>
-    public static void SaveConversationDisplay(string id, List<Agent.ConversationDisplayItem> items)
-    {
-        try
-        {
-            if (items.Count == 0) return;
-            Directory.CreateDirectory(HistoryDir);
-            var path = Path.Combine(HistoryDir, $"{id}.display.json");
-            WriteJsonAtomic(path, items);
-        }
-        catch { }
-    }
-
-    /// <summary>读取会话展示记录；不存在或为空返回空列表（调用方回退到旧渲染路径）。</summary>
-    public static List<Agent.ConversationDisplayItem> LoadConversationDisplay(string id)
-    {
-        try
-        {
-            var path = Path.Combine(HistoryDir, $"{id}.display.json");
-            if (!File.Exists(path)) return [];
-            var json = File.ReadAllText(path);
-            return JsonSerializer.Deserialize<List<Agent.ConversationDisplayItem>>(json, JsonOpts) ?? [];
-        }
-        catch { return []; }
     }
 
     public static List<ConversationMeta> ListConversations()

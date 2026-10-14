@@ -215,19 +215,6 @@
                         VerticalAlignment="Center"
                         Spacing="6">
                         <Button
-                            x:Name="AiQuickButton"
-                            Click="AiQuickButton_Click"
-                            Width="34" Height="30"
-                            Padding="0"
-                            BorderThickness="0"
-                            Background="Transparent"
-                            ToolTipService.ToolTip="AI 助手"
-                            AutomationProperties.Name="AI 助手"
-                            l:Uids.Uid="MainWindow_AiButton">
-                            <FontIcon FontSize="14" Glyph="&#xE99A;" />
-                        </Button>
-
-                        <Button
                             x:Name="NewbieTutorialButton"
                             Click="NewbieTutorialButton_Click"
                             Width="34" Height="30"
