@@ -75,6 +75,13 @@ public static class HardwareInfoService
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern bool GetFirmwareType(out uint firmwareType);
 
+    [DllImport("kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool IsProcessorFeaturePresent(uint processorFeature);
+
+    private const uint PfSecondLevelAddressTranslation = 20;
+    private const uint PfVirtFirmwareEnabled = 21;
+
     [DllImport("user32.dll")]
     private static extern uint GetDpiForSystem();
 
@@ -1801,7 +1808,10 @@ public static class HardwareInfoService
                 mod.Speed = cpuz.MemorySpeed;
         }
         if (!string.IsNullOrWhiteSpace(cpuz.MemoryChannel))
+        {
             data.Memory.ChannelMode = cpuz.MemoryChannel;
+            data.Memory.ChannelModeInferred = false;
+        }
 
         if (cpuz.MemDevices.Count > 0)
         {
@@ -1849,8 +1859,9 @@ public static class HardwareInfoService
             detail.Name = Get(cpu, "Name");
             detail.Cores = ToInt(Get(cpu, "NumberOfCores"));
             detail.Threads = ToInt(Get(cpu, "NumberOfLogicalProcessors"));
-            detail.MaxClockSpeed = FormatMhz(Get(cpu, "MaxClockSpeed"));
-            detail.CurrentClockSpeed = FormatMhz(Get(cpu, "CurrentClockSpeed"));
+            // SMBIOS/WMI 的时钟在现代 CPU 上常固定为标称值，并非最高睿频或实时频率。
+            detail.NominalClockSpeed = FormatMhz(Get(cpu, "MaxClockSpeed"));
+            detail.CurrentClockSpeed = Safe(ReadCurrentCpuClock, null);
             detail.L2CacheSize = FormatCacheSize(Get(cpu, "L2CacheSize"));
             detail.L3CacheSize = FormatCacheSize(Get(cpu, "L3CacheSize"));
             detail.ExtClock = FormatMhz(Get(cpu, "ExtClock"));
@@ -1860,12 +1871,39 @@ public static class HardwareInfoService
             detail.Socket = Get(cpu, "SocketDesignation");
             var dataWidth = ToInt(Get(cpu, "DataWidth"));
             if (dataWidth > 0) detail.DataWidth = $"{dataWidth} 位";
-            detail.VirtualizationEnabled = ReadTriState(cpu, "VirtualizationFirmwareEnabled");
-            detail.SlatEnabled = ReadTriState(cpu, "SecondLevelAddressTranslationExtensions");
+            var hypervisor = Safe(() => ReadTriState(First("Win32_ComputerSystem"), "HypervisorPresent"), null);
+            detail.VirtualizationEnabled = ResolveProcessorFeature(
+                ReadTriState(cpu, "VirtualizationFirmwareEnabled"), IsProcessorFeaturePresent(PfVirtFirmwareEnabled), hypervisor, true);
+            detail.SlatEnabled = ResolveProcessorFeature(
+                ReadTriState(cpu, "SecondLevelAddressTranslationExtensions"), IsProcessorFeaturePresent(PfSecondLevelAddressTranslation), hypervisor, false);
             detail.BrandKey = DetectCpuBrand(detail.Name);
         }
 
         return detail;
+    }
+
+    internal static bool? ResolveProcessorFeature(bool? reported, bool osSupported, bool? hypervisor, bool virtualization)
+    {
+        if (osSupported || reported == true) return true;
+        // Hyper-V/VBS 接管后，底层扩展可能对应用不可见。运行中的 hypervisor
+        // 可证明虚拟化在使用，但不能据此断言来宾系统支持嵌套 SLAT。
+        if (hypervisor == true) return virtualization ? true : null;
+        return reported;
+    }
+
+    private static string? ReadCurrentCpuClock()
+    {
+        using var sample = QueryScoped("root\\CIMV2",
+            "SELECT ProcessorFrequency, PercentProcessorPerformance FROM Win32_PerfFormattedData_Counters_ProcessorInformation WHERE Name='_Total'", 3)
+            .FirstOrDefault();
+        return CalculateCpuClock(ToInt(Get(sample, "ProcessorFrequency")), ToInt(Get(sample, "PercentProcessorPerformance")));
+    }
+
+    internal static string? CalculateCpuClock(int nominalMhz, int performancePercent)
+    {
+        // 性能百分比允许超过 100（睿频）。计数器不可用时不回退静态 WMI 假装实时值。
+        if (nominalMhz <= 0 || performancePercent <= 0) return null;
+        return $"{nominalMhz * (performancePercent / 100d) / 1000d:0.00} GHz";
     }
 
     internal static string? FormatMhz(string? value)
@@ -1954,6 +1992,7 @@ public static class HardwareInfoService
             TotalCapacity = totalBytes > 0 ? $"{totalBytes / 1024d / 1024d / 1024d:0.#} GB" : null,
             MemoryType = typeLabel,
             ChannelMode = InferMemoryChannel(modules.Select(mod => Get(mod, "DeviceLocator"))),
+            ChannelModeInferred = true,
             MaxCapacity = ReadMaxMemoryCapacity(),
             TotalSlots = totalSlots,
             UsedSlots = modules.Count
@@ -2853,23 +2892,20 @@ public static class HardwareInfoService
         return null;
     }
 
-    /// <summary>按内存条位置推断通道模式（BIOS 位置串里的 ChannelA/ChannelB…）。</summary>
+    /// <summary>按 BIOS 的 Channel 名称推测；Controller 编号不计作额外通道，不能据此确定运行模式。</summary>
     internal static string? InferMemoryChannel(IEnumerable<string?> locators)
     {
         var channels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var parsed = 0;
 
         foreach (var locator in locators)
         {
-            if (string.IsNullOrWhiteSpace(locator)) continue;
-            var match = Regex.Match(locator, @"channel[\s_\-]*([a-z])", RegexOptions.IgnoreCase);
-            if (!match.Success) continue;
-
-            parsed++;
-            channels.Add(match.Groups[1].Value.ToUpperInvariant());
+            if (string.IsNullOrWhiteSpace(locator)) return null;
+            var match = Regex.Match(locator, @"(?<![a-z0-9])channel[\s_\-]*([a-z]|\d+)(?=$|[\s_\-])", RegexOptions.IgnoreCase);
+            if (!match.Success) return null;
+            channels.Add(match.Groups[1].Value);
         }
 
-        if (parsed == 0 || channels.Count == 0) return null;
+        if (channels.Count == 0) return null;
 
         return channels.Count switch
         {

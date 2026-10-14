@@ -5104,4 +5104,7 @@ Fields: label class_id score x y w h; Functions: count/contains/startsWith/endsW
   <data name="Settings_ProxyTestFailed" xml:space="preserve">
     <value>Connection failed</value>
   </data>
+  <data name="Hw_Field_NominalClock" xml:space="preserve"><value>Nominal clock (firmware)</value></data>
+  <data name="Hw_Field_SampledClock" xml:space="preserve"><value>Current clock (sampled)</value></data>
+  <data name="Hw_Field_InferredChannel" xml:space="preserve"><value>Channel mode (inferred from slots)</value></data>
 </root>

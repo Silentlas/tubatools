@@ -626,8 +626,8 @@ public sealed partial class HardwareDetailPage : Page, ILocalizablePage
         AddIf(items, "插槽", cpu.Socket);
         if (cpu.Cores > 0) items.Add(Item("核心数", $"{cpu.Cores}"));
         if (cpu.Threads > 0) items.Add(Item("线程数", $"{cpu.Threads}"));
-        AddIf(items, "最大频率", cpu.MaxClockSpeed);
-        AddIf(items, "当前频率", cpu.CurrentClockSpeed);
+        AddIf(items, "标称频率（固件）", cpu.NominalClockSpeed);
+        items.Add(Item("当前频率（采样）", cpu.CurrentClockSpeed));
         AddIf(items, "外频", cpu.ExtClock);
         AddIf(items, "L2 缓存", cpu.L2CacheSize);
         AddIf(items, "L3 缓存", cpu.L3CacheSize);
@@ -635,8 +635,7 @@ public sealed partial class HardwareDetailPage : Page, ILocalizablePage
         AddIf(items, "数据宽度", cpu.DataWidth);
         if (cpu.VirtualizationEnabled.HasValue)
             items.Add(Item("硬件虚拟化", cpu.VirtualizationEnabled.Value ? "已启用" : "未启用"));
-        if (cpu.SlatEnabled.HasValue)
-            items.Add(Item("二级地址转换", cpu.SlatEnabled.Value ? "已支持" : "不支持"));
+        items.Add(Item("二级地址转换", cpu.SlatEnabled.HasValue ? (cpu.SlatEnabled.Value ? "已支持" : "不支持") : null));
         AddIf(items, "制造商", cpu.Manufacturer);
         AddIf(items, "ProcessorID", cpu.ProcessorId);
         return items;
@@ -665,7 +664,6 @@ public sealed partial class HardwareDetailPage : Page, ILocalizablePage
         if (mem == null) return items;
         AddIf(items, "总容量", mem.TotalCapacity);
         AddIf(items, "类型", mem.MemoryType);
-        AddIf(items, "通道模式", mem.ChannelMode);
         AddIf(items, "最大容量", mem.MaxCapacity);
         items.Add(Item("插槽", string.Format(LocalizationService.L("HwDetail_SlotsUsed", "{0}/{1} 已使用"), mem.UsedSlots, mem.TotalSlots)));
         foreach (var mod in mem.Modules)

@@ -5120,4 +5120,7 @@ else then stroke=#888888 visible=true
   <data name="Settings_ProxyTestFailed" xml:space="preserve">
     <value>连接失败</value>
   </data>
+  <data name="Hw_Field_NominalClock" xml:space="preserve"><value>标称频率（固件）</value></data>
+  <data name="Hw_Field_SampledClock" xml:space="preserve"><value>当前频率（采样）</value></data>
+  <data name="Hw_Field_InferredChannel" xml:space="preserve"><value>通道模式（插槽推测）</value></data>
 </root>

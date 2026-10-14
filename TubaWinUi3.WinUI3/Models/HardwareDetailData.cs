@@ -87,7 +87,8 @@ public sealed class CpuDetail
     public string? Package { get; set; }
     public int Cores { get; set; }
     public int Threads { get; set; }
-    public string? MaxClockSpeed { get; set; }
+    /// <summary>固件/WMI 报告的标称时钟，不是最高睿频。</summary>
+    public string? NominalClockSpeed { get; set; }
     public string? CurrentClockSpeed { get; set; }
     public string? L2CacheSize { get; set; }
     public string? L3CacheSize { get; set; }
@@ -126,6 +127,7 @@ public sealed class MemoryDetail
     public string? TotalCapacity { get; set; }
     public string? MemoryType { get; set; }
     public string? ChannelMode { get; set; }
+    public bool ChannelModeInferred { get; set; }
     /// <summary>主板支持的最大内存容量。</summary>
     public string? MaxCapacity { get; set; }
     public int TotalSlots { get; set; }

@@ -32,6 +32,7 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Compile Include="..\TubaWinUI3.ShellExtension\ShellItemSelection.cs" Link="ShellItemSelection.cs" />
   </ItemGroup>
 
   <ItemGroup>
