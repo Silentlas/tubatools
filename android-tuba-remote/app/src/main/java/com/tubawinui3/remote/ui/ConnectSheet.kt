@@ -23,7 +23,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -43,8 +44,8 @@ import com.tubawinui3.remote.data.DEFAULT_PORT
 @Composable
 fun AddPcSheet(vm: RemoteViewModel, initial: ConnectTarget?, onDismiss: () -> Unit) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var address by rememberSaveable(initial) { mutableStateOf(initial?.let { "${it.host}:${it.port}" } ?: "") }
-    var code by rememberSaveable(initial) { mutableStateOf("") }
+    var address by remember(initial) { mutableStateOf(initial?.let { "${it.host}:${it.port}" } ?: "") }
+    var code by remember(initial) { mutableStateOf("") }
 
     val scanner = rememberLauncherForActivityResult(ScanContract()) { result ->
         val text = result.contents ?: return@rememberLauncherForActivityResult
@@ -64,7 +65,7 @@ fun AddPcSheet(vm: RemoteViewModel, initial: ConnectTarget?, onDismiss: () -> Un
             Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 24.dp).navigationBarsPadding(),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("添加电脑", style = MaterialTheme.typography.headlineSmall)
+            Text(initial?.name?.let { "连接 $it" } ?: "添加电脑", style = MaterialTheme.typography.headlineSmall)
             Text(
                 "在电脑上打开 图吧工具箱 → 内置工具 → 连接手机，并确保手机与电脑在同一局域网。",
                 style = MaterialTheme.typography.bodyMedium,
@@ -90,7 +91,8 @@ fun AddPcSheet(vm: RemoteViewModel, initial: ConnectTarget?, onDismiss: () -> Un
             )
             OutlinedTextField(
                 value = code, onValueChange = { code = it.filter(Char::isDigit).take(6) },
-                label = { Text("6 位配对码") },
+                label = { Text("6 位配对码（成功后保存以便自动连接）") },
+                visualTransformation = PasswordVisualTransformation(),
                 singleLine = true, modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
             )

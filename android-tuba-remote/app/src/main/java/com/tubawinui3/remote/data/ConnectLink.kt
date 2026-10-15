@@ -9,7 +9,9 @@ data class ConnectTarget(
     val port: Int = DEFAULT_PORT,
     val code: String? = null,
     val name: String? = null,
-)
+) {
+    override fun toString(): String = "ConnectTarget(host=$host, port=$port, code=<redacted>)"
+}
 
 /** 解析电脑端二维码 `tubalink://IP:端口?code=配对码&name=电脑名`，同时兼容手输的 `IP`、`IP:端口`。 */
 object ConnectLink {

@@ -19,6 +19,10 @@ import com.tubawinui3.remote.data.ConnectTarget
 import com.tubawinui3.remote.data.HardwareSection
 import com.tubawinui3.remote.data.PcStore
 import com.tubawinui3.remote.data.SavedPc
+import com.tubawinui3.remote.data.DiscoveryProtocol
+import com.tubawinui3.remote.data.LanDiscovery
+import com.tubawinui3.remote.data.SavedReconnect
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -64,6 +68,13 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
 
     val connected get() = client != null
 
+    val discovered = mutableStateListOf<ConnectTarget>()
+    var discovering by mutableStateOf(false)
+        private set
+    var discoveryMessage by mutableStateOf<String?>(null)
+        private set
+    private var discoveryJob: Job? = null
+    private var connectionJob: Job? = null
     private var pollJob: Job? = null
     private var clientPcId: String? = null
 
@@ -99,13 +110,16 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun removeDevice(id: String) {
+        connectionJob?.cancel()
+        connecting = false
+        pairTarget = null
         if (clientPcId == id) disconnect()
         saveDevices(PcStore.remove(devices, id))
         statuses.remove(id)
         if (prefs.getString(lastPcPrefKey, null) == id) prefs.edit().remove(lastPcPrefKey).apply()
     }
 
-    /** 并发探测各电脑在线状态（ping 不需要令牌）；在线时顺手把电脑名刷新回来。 */
+    /** 仅用无鉴权 ping 探测在线状态，不让它改写已保存的设备名称。 */
     fun refreshStatuses() {
         val list = devices.toList()
         for (pc in list) {
@@ -113,64 +127,95 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
             if (statuses[pc.id] == null) statuses[pc.id] = PcStatus.Checking
             viewModelScope.launch {
                 val name = runCatching { ApiClient(pc.host, pc.port).ping() }.getOrNull()
+                if (devices.none { it.id == pc.id }) return@launch
                 statuses[pc.id] = if (name != null) PcStatus.Online else PcStatus.Offline
-                if (!name.isNullOrEmpty() && name != pc.name) {
-                    saveDevices(PcStore.upsert(devices, pc.copy(name = name)))
-                }
+
             }
         }
     }
 
     // ───────── 连接 ─────────
 
-    /** 启动时用上次电脑的令牌自动重连；失败（或无令牌）回到「我的电脑」列表。 */
+    /** 启动时仅尝试上次成功连接的地址；发现名称不构成迁移凭据的依据。 */
     fun tryRestore() {
         val lastId = prefs.getString(lastPcPrefKey, null) ?: return
-        val pc = devices.firstOrNull { it.id == lastId } ?: return
-        val token = pc.token ?: return
+        devices.firstOrNull { it.id == lastId }?.let { requestConnect(it) }
+    }
+
+    fun requestConnect(pc: SavedPc) {
+        if (connecting) return
         connecting = true
-        viewModelScope.launch {
-            val c = ApiClient(pc.host, pc.port, token)
+        error = null
+        connectionJob = viewModelScope.launch {
+            val c = ApiClient(pc.host, pc.port)
+            var pairingAttempted = false
             try {
-                c.info()
-                hostName = c.ping().ifEmpty { pc.name.ifEmpty { pc.host } }
-                onConnected(c, pc)
+                val token = SavedReconnect.token(pc,
+                    authenticate = { c.token = it; c.info() },
+                    pair = {
+                        pairingAttempted = true
+                        updateToken(pc.id, null)
+                        c.token = null
+                        c.pair(it, "${Build.MANUFACTURER} ${Build.MODEL}")
+                        c.token!!
+                    },
+                )
+                if (token == null) {
+                    updateToken(pc.id, null)
+                    pairTarget = ConnectTarget(pc.host, pc.port, name = pc.name.ifEmpty { null })
+                    return@launch
+                }
+                c.token = token
+                val updated = pc.copy(token = token)
+                saveDevices(PcStore.upsert(devices, updated))
+                hostName = pc.name.ifEmpty { pc.host }
+                onConnected(c, updated)
             } catch (e: ApiException) {
-                if (e.code == 401) updateToken(pc.id, null)
+                if (e.code == 401 || (pairingAttempted && e.code in listOf(400, 403))) {
+                    saveDevices(devices.map { if (it.id == pc.id) it.copy(token = null, pairingCode = null) else it })
+                    pairTarget = ConnectTarget(pc.host, pc.port, name = pc.name.ifEmpty { null })
+                    error = "配对已失效，请输入电脑上的新配对码"
+                } else {
+                    error = "暂时无法连接电脑，请检查网络和电脑服务后重试；也可手动输入地址与连接码。"
+                }
             } finally {
                 connecting = false
             }
         }
     }
 
-    /** 列表点按：有令牌直接连（401 转配对），没有令牌则请用户输入配对码。 */
-    fun requestConnect(pc: SavedPc) {
+    fun selectDiscovered(target: ConnectTarget) {
         if (connecting) return
-        val token = pc.token
-        if (token == null) {
-            pairTarget = ConnectTarget(pc.host, pc.port, name = pc.name.ifEmpty { null })
-            return
+        val saved = DiscoveryProtocol.savedAt(target, devices)
+        if (saved != null) requestConnect(saved)
+        else {
+            error = null
+            pairTarget = target
         }
-        connecting = true
-        error = null
-        viewModelScope.launch {
-            val c = ApiClient(pc.host, pc.port, token)
+    }
+
+    fun startDiscovery() {
+        if (discoveryJob?.isActive == true) return
+        discovering = true
+        discoveryMessage = null
+        discovered.clear()
+        discoveryJob = viewModelScope.launch {
             try {
-                c.info()
-                hostName = c.ping().ifEmpty { pc.name.ifEmpty { pc.host } }
-                onConnected(c, pc)
-            } catch (e: ApiException) {
-                if (e.code == 401) {
-                    updateToken(pc.id, null)
-                    pairTarget = ConnectTarget(pc.host, pc.port, name = pc.name.ifEmpty { null })
-                    error = "配对已失效，请输入电脑上的 6 位配对码"
-                } else {
-                    error = e.message
-                }
+                discovered.addAll(LanDiscovery.discover())
+                discoveryMessage = if (discovered.isEmpty()) "未发现电脑，可重试或手动输入地址与连接码。" else "选择电脑后输入电脑上显示的配对码。"
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                discoveryMessage = "局域网发现不可用，请用地址与连接码手动连接。"
             } finally {
-                connecting = false
+                discovering = false
             }
         }
+    }
+
+    fun cancelDiscovery() {
+        discoveryJob?.cancel()
+        discoveryMessage = "已停止发现，可手动输入地址与连接码。"
     }
 
     fun clearPairTarget() {
@@ -180,18 +225,19 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
     /** 用配对码连接（添加新电脑 / 重新配对都走这里）。 */
     fun connect(target: ConnectTarget, code: String) {
         if (connecting) return
-        if (code.isBlank()) { error = "请输入电脑上显示的 6 位配对码"; return }
+        if (!Regex("[0-9]{6}").matches(code.trim())) { error = "请输入电脑上显示的 6 位配对码"; return }
         connecting = true
         error = null
-        viewModelScope.launch {
+        connectionJob = viewModelScope.launch {
             val c = ApiClient(target.host, target.port)
             try {
                 val name = c.pair(code.trim(), "${Build.MANUFACTURER} ${Build.MODEL}")
                 val pc = SavedPc(
                     host = target.host,
                     port = target.port,
-                    name = target.name ?: name,
+                    name = name,
                     token = c.token,
+                    pairingCode = code.trim(),
                     lastConnectedAt = System.currentTimeMillis(),
                 )
                 saveDevices(PcStore.upsert(devices, pc))
@@ -199,7 +245,7 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
                 onConnected(c, pc)
                 pairTarget = null
             } catch (e: ApiException) {
-                error = e.message
+                error = "配对失败，请检查地址、连接码及电脑端授权后重试。"
             } finally {
                 connecting = false
             }

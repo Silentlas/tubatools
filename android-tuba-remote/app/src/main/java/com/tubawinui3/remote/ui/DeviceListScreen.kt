@@ -27,6 +27,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +51,11 @@ fun DeviceListScreen(vm: RemoteViewModel) {
     var deleteTarget by remember { mutableStateOf<SavedPc?>(null) }
     val pairTarget = vm.pairTarget
 
+    DisposableEffect(Unit) {
+        vm.startDiscovery()
+        onDispose { vm.cancelDiscovery() }
+    }
+
     // 进入列表后持续刷新在线状态（4 秒一轮，各电脑并发探测）
     LaunchedEffect(Unit) {
         while (true) {
@@ -70,6 +76,27 @@ fun DeviceListScreen(vm: RemoteViewModel) {
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                item {
+                    Text("局域网发现", style = MaterialTheme.typography.titleMedium)
+                    Text("同一局域网内自动发现电脑。成功配对后保存地址与连接码，下次优先用令牌自动连接；令牌失效才尝试保存的码。仅在可信局域网使用。",
+                        style = MaterialTheme.typography.bodySmall)
+                    Text("发现不可用时，点添加电脑输入地址＋连接码。地址变化或同名电脑不能证明身份，需手动输入码。",
+                        style = MaterialTheme.typography.bodySmall)
+                    TextButton(onClick = { if (vm.discovering) vm.cancelDiscovery() else vm.startDiscovery() }) {
+                        Text(if (vm.discovering) "停止发现" else "重新发现")
+                    }
+                    vm.discoveryMessage?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
+                }
+                items(vm.discovered, key = { "discovered:${it.host}:${it.port}" }) { target ->
+                    OutlinedButton(onClick = { vm.selectDiscovered(target) }, enabled = !vm.connecting,
+                        modifier = Modifier.fillMaxWidth()) {
+                        Column {
+                            Text(target.name.orEmpty())
+                            Text("${target.host}:${target.port} · 选择连接")
+                        }
+                    }
+                }
+                if (vm.devices.isNotEmpty()) item { Text("已保存的电脑", style = MaterialTheme.typography.titleMedium) }
                 if (vm.devices.isEmpty()) {
                     item {
                         Text(
@@ -122,7 +149,7 @@ fun DeviceListScreen(vm: RemoteViewModel) {
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
             title = { Text("删除这台电脑？") },
-            text = { Text("将移除「${pc.name.ifEmpty { pc.host }}」及其配对令牌，需要时可重新添加。") },
+            text = { Text("将移除「${pc.name.ifEmpty { pc.host }}」及其地址、配对码和令牌，需要时可重新添加。") },
             confirmButton = {
                 TextButton(onClick = {
                     vm.removeDevice(pc.id)

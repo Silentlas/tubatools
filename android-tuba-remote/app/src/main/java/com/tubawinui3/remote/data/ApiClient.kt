@@ -58,6 +58,9 @@ data class WingetJobState(val done: Boolean, val exitCode: Int, val output: Stri
 class ApiClient(val host: String, val port: Int, var token: String? = null) {
     private val json = Json { ignoreUnknownKeys = true }
     private val http = OkHttpClient.Builder()
+        // Never forward tokens or pairing requests to a redirect destination.
+        .followRedirects(false)
+        .followSslRedirects(false)
         .connectTimeout(5, TimeUnit.SECONDS)
         .readTimeout(20, TimeUnit.SECONDS)
         .writeTimeout(60, TimeUnit.SECONDS)
@@ -112,7 +115,7 @@ class ApiClient(val host: String, val port: Int, var token: String? = null) {
      *  首次连接需要在电脑上弹窗授权，等待时间可能较长（最长约 1 分钟），因此用长超时客户端。 */
     suspend fun pair(code: String, deviceName: String): String {
         val o = postObj(longHttp, "/api/pair", buildJsonObject { put("code", code); put("deviceName", deviceName) })
-        token = o["token"]?.jsonPrimitive?.contentOrNull ?: throw ApiException("配对失败")
+        token = o["token"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() } ?: throw ApiException("配对失败")
         return o["host"]?.jsonPrimitive?.contentOrNull ?: host
     }
 

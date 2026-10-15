@@ -12,8 +12,10 @@ data class SavedPc(
     val name: String = "",
     val token: String? = null,
     val lastConnectedAt: Long = 0,
+    val pairingCode: String? = null,
 ) {
     val id: String get() = "$host:$port"
+    override fun toString(): String = "SavedPc(host=$host, port=$port, credentials=<redacted>)"
 }
 
 /**
@@ -39,6 +41,7 @@ object PcStore {
         val merged = if (old == null) pc else pc.copy(
             name = pc.name.ifBlank { old.name },
             token = pc.token ?: old.token,
+            pairingCode = pc.pairingCode ?: old.pairingCode,
             lastConnectedAt = maxOf(pc.lastConnectedAt, old.lastConnectedAt),
         )
         return listOf(merged) + list.filter { it.id != pc.id }
