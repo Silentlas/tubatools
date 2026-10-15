@@ -539,7 +539,6 @@ namespace TubaWinUi3.Compatible.Forms
                 // 品牌色块（右端，替代 SVG logo）
                 int rightPad = 20;
                 bool hasBrand = !string.IsNullOrEmpty(_item.BrandKey);
-                if (_item.IsVerified) rightPad += 58;
                 if (hasBrand) rightPad += 28;
 
                 var valueRect = new RectangleF(padX + 104, 0, Width - padX - 104 - rightPad, Height);
@@ -554,18 +553,6 @@ namespace TubaWinUi3.Compatible.Forms
                     using (var path = MainForm.RoundedRect(tileRect, 5))
                     using (var b = new SolidBrush(ThemeService.BrandColor(_item.BrandKey)))
                         g.FillPath(b, path);
-                }
-
-                if (_item.IsVerified)
-                {
-                    // 「真」徽章（对齐 WinUI3 绿色 #00C864）
-                    var badgeRect = new Rectangle(Width - (hasBrand ? 56 : 22) - 42, (Height - 20) / 2, 42, 20);
-                    using (var path = MainForm.RoundedRect(badgeRect, 4))
-                    using (var b = new SolidBrush(Color.FromArgb(38, 0, 200, 100)))
-                        g.FillPath(b, path);
-                    using (var f = ThemeService.UiFont(8f, bold: true))
-                    using (var b = new SolidBrush(Color.FromArgb(255, 0, 200, 100)))
-                        g.DrawString("真", f, b, badgeRect.X + 15, badgeRect.Y + 3);
                 }
             }
         }

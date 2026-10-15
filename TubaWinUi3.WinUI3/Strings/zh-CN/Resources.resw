@@ -3065,9 +3065,6 @@
   <data name="Hw_DetailsHeader.Text" xml:space="preserve">
     <value>详细信息</value>
   </data>
-  <data name="Hw_VerifiedBadge.Text" xml:space="preserve">
-    <value>真</value>
-  </data>
   <data name="Hw_UptimeFormat" xml:space="preserve">
     <value>{0}天{1}小时{2}分钟{3}秒</value>
   </data>

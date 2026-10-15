@@ -3049,9 +3049,6 @@ Permissions
   <data name="Hw_DetailsHeader.Text" xml:space="preserve">
     <value>Details</value>
   </data>
-  <data name="Hw_VerifiedBadge.Text" xml:space="preserve">
-    <value>Verified</value>
-  </data>
   <data name="Hw_UptimeFormat" xml:space="preserve">
     <value>{0}d {1}h {2}m {3}s</value>
   </data>

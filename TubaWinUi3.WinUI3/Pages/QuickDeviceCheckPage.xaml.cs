@@ -338,24 +338,6 @@ public sealed partial class QuickDeviceCheckPage : Page
                                 VerticalAlignment = VerticalAlignment.Center
                             });
 
-                            if (item.IsVerified)
-                            {
-                                valueStack.Children.Add(new Border
-                                {
-                                    Padding = new Thickness(8, 2, 8, 2),
-                                    CornerRadius = new CornerRadius(4),
-                                    Background = new SolidColorBrush(Color.FromArgb(38, ThemeColors.AccentGreen.R, ThemeColors.AccentGreen.G, ThemeColors.AccentGreen.B)),
-                                    VerticalAlignment = VerticalAlignment.Center,
-                                    Child = new TextBlock
-                                    {
-                                        Text = "真",
-                                        FontSize = 12,
-                                        FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
-                                        Foreground = new SolidColorBrush(ThemeColors.AccentGreen)
-                                    }
-                                });
-                            }
-
                             row.Children.Add(valueStack);
                             hwStack.Children.Add(row);
                         }

@@ -500,14 +500,6 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
                     logoImage.Visibility = Visibility.Collapsed;
                 }
             }
-
-            var verifiedBadge = FindChildByName<Border>(el, "VerifiedBadge");
-            if (verifiedBadge is not null)
-            {
-                verifiedBadge.Visibility = item.IsVerified
-                    ? Visibility.Visible
-                    : Visibility.Collapsed;
-            }
         }
 
         if (!_animatingDetails)
