@@ -544,6 +544,100 @@ internal static class ZipExtractHelper
     private const int ReplaceRetryDelayMs = 500;
     private const int CleanupAttempts = 3;
 
+    private const uint HResultEncryptionFailed = 0x80071770; // HRESULT_FROM_WIN32(ERROR_ENCRYPTION_FAILED)
+
+    /// <summary>
+    /// 0x1770 (ERROR_ENCRYPTION_FAILED)：目录带「加密」属性，但所在卷无法完成 EFS 加密。
+    /// 常见于把 TEMP / 数据目录重定向到内存盘、exFAT/FAT32 分区或 Dev Drive（ReFS）。
+    /// </summary>
+    internal static bool IsEncryptionFailure(Exception ex)
+    {
+        for (var e = ex; e is not null; e = e.InnerException)
+        {
+            if (unchecked((uint)e.HResult) == HResultEncryptionFailed) return true;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 创建解压暂存目录：优先目标目录的同级目录（同卷，最终替换是原子重命名），
+    /// 其次系统 TEMP。每个候选都做一次真实写入探测 —— 目录带「加密」属性而所在卷
+    /// 不支持 EFS 时，创建/写入会立刻失败并切到下一个候选，而不是解压到一半再报错。
+    /// </summary>
+    internal static string CreateStagingDirectory(string destinationDir)
+    {
+        Exception? firstError = null;
+
+        foreach (var parent in GetStagingCandidates(destinationDir))
+        {
+            var staging = Path.Combine(parent, $".tuba_extract_{Guid.NewGuid():N}");
+            try
+            {
+                Directory.CreateDirectory(staging);
+                ProbeWritable(staging);
+                return staging;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException
+                                           or NotSupportedException or ArgumentException)
+            {
+                firstError ??= ex;
+                TryDeleteDirectory(staging);
+            }
+        }
+
+        throw new IOException(
+            "无法创建解压暂存目录：目标目录与系统临时目录均不可写。" +
+            "请检查文件夹是否带「加密」属性、磁盘是否已满或只读。", firstError);
+    }
+
+    private static IEnumerable<string> GetStagingCandidates(string destinationDir)
+    {
+        string? parent = null;
+        try { parent = GetStagingParent(Path.GetFullPath(destinationDir)); }
+        catch { }
+
+        if (!string.IsNullOrEmpty(parent)) yield return parent;
+
+        var temp = Path.GetTempPath();
+        if (string.IsNullOrEmpty(parent) || !PathsEqual(parent, temp))
+            yield return temp;
+    }
+
+    /// <summary>
+    /// 暂存目录的落点：目标所在 Tools 根目录的上一级（内核包目标是 Tools 本身、
+    /// 社区工具在 Tools\分类\工具 下）。与目标同卷，替换是原子重命名；
+    /// 同时不会被 ToolCatalog 扫描到 —— 解压中的暂存目录里满是 exe，
+    /// 放在分类目录下会短暂出现一张幽灵工具卡。
+    /// </summary>
+    private static string GetStagingParent(string destinationDir)
+    {
+        var full = Path.TrimEndingDirectorySeparator(destinationDir);
+        string? toolsRoot = null;
+
+        // 取最靠近卷根的 Tools 目录（工具自身可能也带名为 Tools 的子目录）
+        for (var dir = new DirectoryInfo(full); dir is not null; dir = dir.Parent)
+        {
+            if (string.Equals(dir.Name, "Tools", StringComparison.OrdinalIgnoreCase))
+                toolsRoot = dir.FullName;
+        }
+
+        return toolsRoot is not null && Path.GetDirectoryName(toolsRoot) is { Length: > 0 } rootParent
+            ? rootParent
+            : Path.GetDirectoryName(full) ?? full;
+    }
+
+    private static bool PathsEqual(string a, string b) => string.Equals(
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(a)),
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(b)),
+        StringComparison.OrdinalIgnoreCase);
+
+    private static void ProbeWritable(string dir)
+    {
+        var probe = Path.Combine(dir, ".probe");
+        using var _ = new FileStream(probe, FileMode.CreateNew, FileAccess.Write,
+            FileShare.None, 1, FileOptions.DeleteOnClose);
+    }
+
     /// <summary>
     /// 解压到临时目录后原子替换目标目录（临时解压 → 备份旧目录 → 移动新目录 → 删备份），
     /// 失败自动重试（覆盖文件占用），最终以逐文件拷贝兜底；个别文件写入失败仅跳过并提示。
@@ -567,7 +661,7 @@ internal static class ZipExtractHelper
                 Thread.Sleep(ReplaceRetryDelayMs * attempt);
             }
 
-            var extractDir = Path.Combine(Path.GetTempPath(), $"TubaWinUi3_Extract_{Guid.NewGuid():N}");
+            var extractDir = CreateStagingDirectory(destinationDir);
             try
             {
                 ExtractOnce(archivePath, destinationDir, extractDir, profile, statusProgress,
@@ -592,6 +686,9 @@ internal static class ZipExtractHelper
     /// </summary>
     private static string DescribeReplaceFailure(Exception ex, ExtractReplaceProfile profile)
     {
+        // 0x1770 的原始文案「无法加密指定的文件」对用户没有指导意义，单独给出排查方向
+        if (IsEncryptionFailure(ex)) return profile.EncryptionHint;
+
         for (var e = ex; e is not null; e = e.InnerException)
         {
             if (e is not UnauthorizedAccessException) continue;
@@ -800,19 +897,27 @@ public sealed record ExtractReplaceProfile(
     string BusyHint,
     string BusyHintFormat,        // {0} = 被占用/只读的路径
     string GenericFailureFormat,  // {0} = 重试次数，{1} = 原始错误
-    string CopyFailureFormat)     // {0} = 原始错误
+    string CopyFailureFormat,     // {0} = 原始错误
+    string EncryptionHint)        // 0x1770 ERROR_ENCRYPTION_FAILED 的排查提示
 {
     public static readonly ExtractReplaceProfile ToolsBundle = new(
         "内核安装失败：目标文件被占用或只读，请关闭正在运行的工具（如 DirectX Repair）后重试。",
         "内核安装失败：无法写入 {0}（文件被占用或只读）。请关闭正在运行的工具（如 DirectX Repair）后重试。",
         "解压工具包失败（已自动重试 {0} 次）：{1}",
-        "解压工具包失败：{0}");
+        "解压工具包失败：{0}",
+        "内核安装失败：目标文件夹带「加密」属性，但系统无法完成 EFS 加密。" +
+        "若 TEMP 或数据目录在内存盘、exFAT/FAT32、Dev Drive 上，请改回 C 盘默认目录；" +
+        "NTFS 磁盘上多为 EFS 证书/密钥失效（重装系统、改密码或文件夹加密工具造成），" +
+        "可在文件夹属性→高级中取消「加密内容以便保护数据」后重试。");
 
     public static readonly ExtractReplaceProfile CommunityTool = new(
         "安装失败：目标文件被占用或只读，请关闭正在运行的工具后重试。",
         "安装失败：无法写入 {0}（文件被占用或只读）。请关闭正在运行的工具后重试。",
         "解压社区工具失败（已自动重试 {0} 次）：{1}",
-        "解压社区工具失败：{0}");
+        "解压社区工具失败：{0}",
+        "安装失败：目标文件夹带「加密」属性，但系统无法完成 EFS 加密。" +
+        "若 TEMP 在内存盘、exFAT/FAT32、Dev Drive 上，请改回 C 盘默认目录；" +
+        "NTFS 磁盘上多为 EFS 证书/密钥失效，可在文件夹属性→高级中取消「加密内容以便保护数据」后重试。");
 }
 
 public sealed class ToolsBundleExtractProcessor : IDownloadPostProcessor

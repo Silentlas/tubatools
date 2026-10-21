@@ -310,7 +310,17 @@ public sealed partial class CommunityToolsPage : Page
             ? Visibility.Visible
             : Visibility.Collapsed;
 
-        var flyout = (MenuFlyout)ToolsGrid.Resources["CommunityItemFlyout"];
+        // 菜单在 Page.Resources 里声明（x:Name → CommunityItemFlyout 字段）。
+        // 这里再兜底取一次资源：即使字段为空（模板/热重载等异常路径）也不至于右键就崩。
+        var flyout = CommunityItemFlyout ?? (Resources.TryGetValue("CommunityItemFlyout", out var fallback)
+            ? fallback as MenuFlyout
+            : null);
+        if (flyout is null)
+        {
+            Debug.WriteLine("[CommunityToolsPage] 找不到卡片菜单资源 CommunityItemFlyout，已忽略本次右键。");
+            return;
+        }
+
         flyout.ShowAt(fe, e.GetPosition(fe));
     }
 

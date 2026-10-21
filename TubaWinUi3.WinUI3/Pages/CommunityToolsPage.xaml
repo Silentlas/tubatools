@@ -14,6 +14,47 @@
         <local:FavGlyphConverter x:Key="FavGlyphConverter" />
         <local:NullToVisibilityConverter x:Key="NullToCollapse" />
         <local:BoolToVisibilityConverter x:Key="BoolToVis" />
+
+        <!-- 卡片悬停菜单：必须声明在 Page.Resources 里。GridView 会为每个容器复制资源字典，
+             写在 GridView.Resources 里时 x:Name 生成的字段只指向模板副本而永远是 null，
+             右键即 NullReferenceException（Issue #238）。 -->
+        <MenuFlyout x:Name="CommunityItemFlyout">
+            <MenuFlyoutItem x:Name="MenuToggleFavorite" Text="收藏" Click="MenuToggleFavorite_Click">
+                <MenuFlyoutItem.Icon>
+                    <FontIcon Glyph="&#xE734;" />
+                </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
+            <MenuFlyoutItem x:Name="MenuSendToDesktop" Text="发送到桌面快捷方式" Click="MenuSendToDesktop_Click">
+                <MenuFlyoutItem.Icon>
+                    <FontIcon Glyph="&#xE8AD;" />
+                </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
+            <MenuFlyoutItem x:Name="MenuRunAsAdmin" Text="以管理员身份运行" Click="MenuRunAsAdmin_Click" Icon="Admin" />
+            <MenuFlyoutItem x:Name="MenuOpenDirectory" Text="打开工具所在目录" Click="MenuOpenDirectory_Click" Icon="Folder" />
+            <MenuFlyoutItem x:Name="MenuCopySource" Text="复制下载链接" Click="MenuCopySource_Click">
+                <MenuFlyoutItem.Icon>
+                    <FontIcon Glyph="&#xE8C8;" />
+                </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
+            <MenuFlyoutSeparator x:Name="MenuSeparator1" Visibility="Collapsed" />
+            <MenuFlyoutItem x:Name="MenuCancelInstall" Text="取消下载" Click="MenuCancelInstall_Click" Visibility="Collapsed">
+                <MenuFlyoutItem.Icon>
+                    <FontIcon Glyph="&#xE711;" />
+                </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
+            <MenuFlyoutSeparator x:Name="MenuSeparator2" Visibility="Collapsed" />
+            <MenuFlyoutItem x:Name="MenuUninstall" Text="卸载工具" Click="MenuUninstall_Click" Visibility="Collapsed">
+                <MenuFlyoutItem.Icon>
+                    <FontIcon Glyph="&#xE74D;" />
+                </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
+            <MenuFlyoutItem x:Name="MenuRemoveRequest" Text="申请下架" Click="MenuRemoveRequest_Click"
+                            Foreground="{ThemeResource SystemFillColorCriticalBrush}" Visibility="Collapsed">
+                <MenuFlyoutItem.Icon>
+                    <FontIcon Glyph="&#xE7BA;" />
+                </MenuFlyoutItem.Icon>
+            </MenuFlyoutItem>
+        </MenuFlyout>
     </Page.Resources>
 
     <Grid>
@@ -125,45 +166,6 @@
                     ItemContainerStyle="{StaticResource ToolCardItemStyle}"
                     SelectionMode="None"
                     SizeChanged="ToolsGrid_SizeChanged">
-                    <GridView.Resources>
-                        <MenuFlyout x:Key="CommunityItemFlyout">
-                            <MenuFlyoutItem x:Name="MenuToggleFavorite" Text="收藏" Click="MenuToggleFavorite_Click">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE734;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem x:Name="MenuSendToDesktop" Text="发送到桌面快捷方式" Click="MenuSendToDesktop_Click">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE8AD;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem x:Name="MenuRunAsAdmin" Text="以管理员身份运行" Click="MenuRunAsAdmin_Click" Icon="Admin" />
-                            <MenuFlyoutItem x:Name="MenuOpenDirectory" Text="打开工具所在目录" Click="MenuOpenDirectory_Click" Icon="Folder" />
-                            <MenuFlyoutItem x:Name="MenuCopySource" Text="复制下载链接" Click="MenuCopySource_Click">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE8C8;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutSeparator x:Name="MenuSeparator1" Visibility="Collapsed" />
-                            <MenuFlyoutItem x:Name="MenuCancelInstall" Text="取消下载" Click="MenuCancelInstall_Click" Visibility="Collapsed">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE711;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutSeparator x:Name="MenuSeparator2" Visibility="Collapsed" />
-                            <MenuFlyoutItem x:Name="MenuUninstall" Text="卸载工具" Click="MenuUninstall_Click" Visibility="Collapsed">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE74D;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem x:Name="MenuRemoveRequest" Text="申请下架" Click="MenuRemoveRequest_Click"
-                                            Foreground="{ThemeResource SystemFillColorCriticalBrush}" Visibility="Collapsed">
-                                <MenuFlyoutItem.Icon>
-                                    <FontIcon Glyph="&#xE7BA;" />
-                                </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                        </MenuFlyout>
-                    </GridView.Resources>
                     <GridView.ItemTemplate>
                         <DataTemplate>
                             <Border

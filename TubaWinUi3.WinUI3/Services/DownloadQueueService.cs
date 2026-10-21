@@ -479,7 +479,7 @@ public static class DownloadQueueService
 
                 if (CanAutoRetryMultiFile(item))
                 {
-                    var reason = ex.InnerException?.Message ?? ex.Message;
+                    var reason = DescribeError(ex);
                     if (reason.Length > 120) reason = reason[..120] + "...";
                     DispatchProcessingStatus(item, $"下载中断（{reason}），正在刷新下载列表并自动重试...");
                     await Task.Delay(3000).ConfigureAwait(false);
@@ -490,7 +490,7 @@ public static class DownloadQueueService
                 _multiFileAutoRetries.Remove(item.Id);
             }
 
-            var errorMsg = ex.InnerException?.Message ?? ex.Message;
+            var errorMsg = DescribeError(ex);
             DispatchError(item, errorMsg);
             DispatchState(item, DownloadItemState.Failed);
             DecrementPending();
@@ -505,6 +505,28 @@ public static class DownloadQueueService
                 _activeTasks.Remove(item.Id);
             QueueChanged?.Invoke();
         }
+    }
+
+    private const uint HResultEncryptionFailed = 0x80071770; // HRESULT_FROM_WIN32(ERROR_ENCRYPTION_FAILED)
+
+    /// <summary>
+    /// 队列失败文案。异常外层已经是处理器整理过的可读文案（「内核安装失败：文件被占用…」
+    /// 「主源下载失败：…」等），不能再取 InnerException 把提示换回系统原文。
+    /// 0x1770（ERROR_ENCRYPTION_FAILED）另给排查方向：原始文案「无法加密指定的文件」
+    /// 只说明目录带「加密」属性但所在卷不支持 EFS（内存盘 / exFAT / Dev Drive 常见），
+    /// 对用户没有指导意义。
+    /// </summary>
+    internal static string DescribeError(Exception ex)
+    {
+        // 只看最外层：解压链路已经把 0x1770 包装成带上下文的提示（外层 HResult 不再是 0x1770），
+        // 只有文件 API 直接抛上来的原始错误才需要替换文案。
+        if (unchecked((uint)ex.HResult) == HResultEncryptionFailed)
+            return "无法写入文件：文件夹带「加密」属性，但系统无法完成 EFS 加密。" +
+                   "若 TEMP 或应用数据目录在内存盘、exFAT/FAT32、Dev Drive 上，请改回 C 盘默认目录；" +
+                   "NTFS 磁盘上多为 EFS 证书/密钥失效（重装系统、改密码或文件夹加密工具造成），" +
+                   "可在文件夹属性→高级中取消「加密内容以便保护数据」后重试。";
+
+        return ex.Message;
     }
 
     private static bool CanAutoRetryMultiFile(DownloadItem item)

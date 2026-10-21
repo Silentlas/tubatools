@@ -44,6 +44,7 @@ public static class PhoneLinkService
     private const int IoBufferSize = 1 << 20;
 
     private static HttpListener? _listener;
+    private static PhoneLinkDiscovery? _discovery;
     private static CancellationTokenSource? _cts;
     private static readonly object _stateLock = new();
     private static readonly SemaphoreSlim _monitorLock = new(1, 1);
@@ -59,7 +60,8 @@ public static class PhoneLinkService
 
     public static bool IsRunning { get; private set; }
     public static int Port { get; private set; } = DefaultPort;
-    public static string PairCode { get; private set; } = NewPairCode();
+    internal const string PairCodeSettingKey = "PhoneLinkPairCode";
+    public static string PairCode { get; private set; } = LoadPairCode();
     public static event Action? StateChanged;
     public static event Action<PhoneChatMessage>? MessageAdded;
     public static event Action? JobsChanged;
@@ -124,7 +126,7 @@ public static class PhoneLinkService
 
     // ───────────────────────── 地址 / 配对 ─────────────────────────
 
-    /// <summary>所有可用于局域网连接的 IPv4 地址（排除回环、APIPA、未启用/虚拟网卡）。</summary>
+    /// <summary>所有可用于局域网连接的 IPv4 地址（排除回环、APIPA、未启用网卡及隧道）。</summary>
     public static List<string> GetLocalIps()
     {
         var result = new List<string>();
@@ -145,7 +147,7 @@ public static class PhoneLinkService
         }
         catch { }
         if (result.Count == 0) result.Add("127.0.0.1");
-        return result;
+        return result.Distinct().ToList();
     }
 
     /// <summary>二维码内容：tubalink://IP:端口?code=配对码&amp;name=电脑名。</summary>
@@ -154,9 +156,29 @@ public static class PhoneLinkService
 
     internal static string NewPairCode() => RandomNumberGenerator.GetInt32(0, 1_000_000).ToString("D6");
 
+    internal static string LoadPairCode()
+    {
+        var saved = AppSettings.Get(PairCodeSettingKey);
+        if (saved is { Length: 6 } && saved.All(c => c is >= '0' and <= '9')) return saved;
+        var code = NewPairCode();
+        AppSettings.Set(PairCodeSettingKey, code);
+        AppSettings.Flush();
+        return code;
+    }
+
+    // Caller holds _stateLock. Explicit rotations must never leave the old code valid.
+    private static void RotatePairCode()
+    {
+        string next;
+        do { next = NewPairCode(); } while (next == PairCode);
+        PairCode = next;
+        AppSettings.Set(PairCodeSettingKey, next);
+        AppSettings.Flush();
+    }
+
     public static void RefreshPairCode()
     {
-        PairCode = NewPairCode();
+        lock (_stateLock) RotatePairCode();
         StateChanged?.Invoke();
     }
 
@@ -173,7 +195,8 @@ public static class PhoneLinkService
                 {
                     _failedPairs = 0;
                     _lockedUntil = DateTime.UtcNow.AddSeconds(30);
-                    PairCode = NewPairCode();
+                    RotatePairCode();
+                    StateChanged?.Invoke();
                 }
                 return (null, "配对码错误");
             }
@@ -216,14 +239,14 @@ public static class PhoneLinkService
         return set;
     }
 
-    /// <summary>该设备已被记住（或当前就有它的在线令牌）→ 无需再次询问。</summary>
+    /// <summary>只有电脑端明确记住的设备才可免再次询问；待授权令牌不算授权。</summary>
     internal static bool IsDeviceApproved(string deviceName)
     {
         lock (_approvedDevices)
         {
             if (_approvedDevices.Contains(deviceName)) return true;
         }
-        return _tokens.Values.Any(d => string.Equals(d.Name, deviceName, StringComparison.OrdinalIgnoreCase));
+        return false;
     }
 
     private static void RememberApprovedDevice(string deviceName)
@@ -236,17 +259,26 @@ public static class PhoneLinkService
     }
 
     /// <summary>新设备连接前必须经电脑端弹窗授权；拒绝/超时/无 UI 都视为拒绝。</summary>
-    private static async Task<bool> EnsureDeviceApprovedAsync(string deviceName)
+    internal static async Task<bool> EnsureDeviceApprovedAsync(string deviceName, CancellationToken ct = default)
     {
-        if (IsDeviceApproved(deviceName)) return true;
+        int generation;
+        lock (_stateLock)
+        {
+            generation = _approvalGeneration;
+            if (IsDeviceApproved(deviceName)) return true;
+        }
         var handler = PairApprovalHandler;
         var approved = false;
         if (handler is not null)
         {
-            try { approved = await handler(deviceName).ConfigureAwait(false); } catch { approved = false; }
+            try { approved = await handler(deviceName).WaitAsync(ct).ConfigureAwait(false); } catch { approved = false; }
         }
-        if (approved) RememberApprovedDevice(deviceName);
-        return approved;
+        lock (_stateLock)
+        {
+            if (ct.IsCancellationRequested || generation != _approvalGeneration) return false;
+            if (approved) RememberApprovedDevice(deviceName);
+            return approved;
+        }
     }
 
     private static void RevokeToken(string token)
@@ -264,16 +296,34 @@ public static class PhoneLinkService
         return false;
     }
 
+    private static int _approvalGeneration;
+
     public static void RevokeAll()
     {
-        _tokens.Clear();
-        PairCode = NewPairCode();
+        lock (_stateLock)
+        {
+            _tokens.Clear();
+            _approvalGeneration++;
+            lock (_approvedDevices)
+            {
+                _approvedDevices.Clear();
+                AppSettings.Remove(ApprovedDevicesSettingKey);
+            }
+            RotatePairCode();
+        }
         StateChanged?.Invoke();
     }
 
     // ───────────────────────── 启停 ─────────────────────────
 
+    private static readonly object _lifecycleLock = new();
+
     public static void Start()
+    {
+        lock (_lifecycleLock) StartCore();
+    }
+
+    private static void StartCore()
     {
         if (IsRunning) return;
         try { Directory.CreateDirectory(ReceiveDir); } catch { }
@@ -294,20 +344,37 @@ public static class PhoneLinkService
                 listener = new HttpListener();
                 Port++;
             }
+            catch
+            {
+                listener.Close();
+                _cts.Dispose();
+                _cts = null;
+                throw;
+            }
         }
         _listener = listener;
         IsRunning = true;
-        PairCode = NewPairCode();
-        StateChanged?.Invoke();
+        _discovery = PhoneLinkDiscovery.TryStart(Port);
         var ct = _cts.Token;
         _ = Task.Run(() => ListenLoop(listener, ct));
+        StateChanged?.Invoke();
     }
 
     public static void Stop()
     {
+        lock (_lifecycleLock) StopCore();
+    }
+
+    private static void StopCore()
+    {
         if (!IsRunning) return;
         IsRunning = false;
         _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+        _discovery?.Dispose();
+        _discovery = null;
+        lock (_stateLock) _approvalGeneration++;
         foreach (var job in GetJobs().Where(j => j.IsRunning)) CancelJob(job.Id);
         try { _listener?.Stop(); _listener?.Close(); } catch { }
         _listener = null;
@@ -418,7 +485,7 @@ public static class PhoneLinkService
             }
             // 首次连接需要电脑端弹窗授权（拒绝则立即吊销刚签发的令牌）
             var name = string.IsNullOrWhiteSpace(deviceName) ? "手机" : deviceName.Trim();
-            if (!await EnsureDeviceApprovedAsync(name))
+            if (!await EnsureDeviceApprovedAsync(name, ct) || !_tokens.ContainsKey(token))
             {
                 RevokeToken(token);
                 await WriteJson(ctx, 403, new { error = "电脑端未允许本次连接，请在电脑上确认后再试" });

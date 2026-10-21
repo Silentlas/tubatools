@@ -53,6 +53,7 @@
                                 x:Name="ServiceStatusText"
                                 Style="{StaticResource CaptionTextStyle}"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                TextWrapping="Wrap"
                                 Text="已关闭" />
                         </StackPanel>
                         <ToggleSwitch
@@ -71,7 +72,7 @@
                     IsClosable="False"
                     Severity="Warning"
                     Title="仅限可信的局域网"
-                    Message="配对后的手机拥有执行 PowerShell 命令与安装软件的权限，不用时请关闭服务；首次开启时 Windows 防火墙可能需要放行。" />
+                    Message="配对后的手机拥有执行 PowerShell 命令与安装软件的权限，不用时请关闭服务；首次开启时 Windows 防火墙可能需要放行 HTTP 与 UDP 18764（局域网发现）。" />
 
                 <!-- 配对 -->
                 <Border Style="{StaticResource FluentCardStyle}">
@@ -81,7 +82,8 @@
                             <TextBlock
                                 Style="{StaticResource CaptionTextStyle}"
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                Text="手机扫码或输入配对码即可连接；本机服务运行期间配对保持有效。" />
+                                TextWrapping="Wrap"
+                                Text="手机扫码或输入配对码即可连接；配对码重启后保持不变，手机可保存后自动重连；首次连接仍需电脑授权。" />
                         </StackPanel>
 
                         <Grid x:Name="PairRunningPanel" ColumnSpacing="24">
@@ -126,12 +128,6 @@
                                             TextWrapping="Wrap"
                                             Text="暂无已连接的手机" />
                                     </StackPanel>
-                                    <ComboBox
-                                        x:Name="IpBox"
-                                        Grid.Column="1"
-                                        MinWidth="200"
-                                        Header="电脑 IP 地址"
-                                        SelectionChanged="IpBox_SelectionChanged" />
                                 </Grid>
                                 <StackPanel Orientation="Horizontal" Spacing="8">
                                     <Button x:Name="RefreshCodeBtn" Click="RefreshCodeBtn_Click">
@@ -143,7 +139,7 @@
                                     <Button x:Name="RevokeBtn" Click="RevokeBtn_Click">
                                         <StackPanel Orientation="Horizontal" Spacing="8">
                                             <FontIcon FontSize="12" Glyph="&#xE711;" />
-                                            <TextBlock Text="断开所有手机" />
+                                            <TextBlock Text="撤销全部授权" />
                                         </StackPanel>
                                     </Button>
                                 </StackPanel>

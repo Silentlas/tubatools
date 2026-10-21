@@ -31,7 +31,6 @@ public sealed partial class PhoneLinkPage : Page
             PhoneLinkService.StateChanged += OnServiceStateChanged;
             PhoneLinkService.JobsChanged += OnJobsChanged;
         }
-        FillIps();
         RefreshService();
         RefreshReceive();
         RefreshJobs();
@@ -60,7 +59,7 @@ public sealed partial class PhoneLinkPage : Page
     {
         var running = PhoneLinkService.IsRunning;
         if (ServiceToggle.IsOn != running) ServiceToggle.IsOn = running;
-        ServiceStatusText.Text = running ? $"运行中 · 端口 {PhoneLinkService.Port}" : "已关闭";
+        ServiceStatusText.Text = running ? $"运行中 · 0.0.0.0:{PhoneLinkService.Port}（所有网卡）" : "已关闭";
         PairRunningPanel.Visibility = running ? Visibility.Visible : Visibility.Collapsed;
         PairOffHint.Visibility = running ? Visibility.Collapsed : Visibility.Visible;
         if (!running)
@@ -68,23 +67,21 @@ public sealed partial class PhoneLinkPage : Page
             DevicesText.Text = "";
             return;
         }
-        var ip = IpBox.SelectedItem as string ?? PhoneLinkService.GetLocalIps().FirstOrDefault() ?? "127.0.0.1";
+        var ips = PhoneLinkService.GetLocalIps();
+        var ip = ips[0];
         PairCodeText.Text = PhoneLinkService.PairCode;
-        AddressText.Text = $"手动连接：{ip}:{PhoneLinkService.Port}";
+        AddressText.Text = "可连接地址（无需选择网卡）：\n" +
+            string.Join("\n", ips.Select(address => $"{address}:{PhoneLinkService.Port}")) +
+            (ip == "127.0.0.1" ? "\n未检测到局域网 IPv4 地址，请检查网络连接。" : "");
         var names = PhoneLinkService.PairedDeviceNames;
         DevicesText.Text = names.Count == 0 ? "暂无已连接的手机" : "已连接：" + string.Join("、", names);
         _ = UpdateQrAsync(PhoneLinkService.BuildQrPayload(ip));
     }
 
-    private void FillIps()
-    {
-        IpBox.ItemsSource = PhoneLinkService.GetLocalIps();
-        if (IpBox.SelectedIndex < 0) IpBox.SelectedIndex = 0;
-    }
-
     private void ServiceToggle_Toggled(object sender, RoutedEventArgs e)
     {
         if (ServiceToggle.IsOn == PhoneLinkService.IsRunning) return;
+        string? startupError = null;
         try
         {
             if (ServiceToggle.IsOn) PhoneLinkService.Start();
@@ -92,15 +89,11 @@ public sealed partial class PhoneLinkPage : Page
         }
         catch (Exception ex)
         {
-            ServiceStatusText.Text = "启动失败：" + ex.Message;
+            startupError = "启动失败：" + ex.Message;
         }
         RefreshService();
+        if (startupError is not null) ServiceStatusText.Text = startupError;
         RefreshJobs();
-    }
-
-    private void IpBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (PhoneLinkService.IsRunning) RefreshService();
     }
 
     private void RefreshCodeBtn_Click(object sender, RoutedEventArgs e) => PhoneLinkService.RefreshPairCode();

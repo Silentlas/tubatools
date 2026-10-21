@@ -1,4 +1,5 @@
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using TubaWinUi3.Models;
 
 namespace TubaWinUi3.Tests;
@@ -153,5 +154,84 @@ public class ZipExtractHelperTests
         {
             Directory.Delete(root, true);
         }
+    }
+
+    [Fact]
+    public void CreateStagingDirectory_PrefersDestinationSibling_AndLeavesNoProbeFile()
+    {
+        var root = CreateTempDir();
+        try
+        {
+            var destination = Path.Combine(root, "Tools");
+            Directory.CreateDirectory(destination);
+
+            var staging = ZipExtractHelper.CreateStagingDirectory(destination);
+
+            // 同级目录 = 同卷，最终替换才是原子重命名；也避开不支持 EFS 的 TEMP 卷
+            Assert.Equal(Path.GetFullPath(root), Path.GetFullPath(Path.GetDirectoryName(staging)!));
+            Assert.True(Directory.Exists(staging));
+            Assert.Empty(Directory.EnumerateFileSystemEntries(staging));
+
+            Directory.Delete(staging, true);
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public void CreateStagingDirectory_KeepsCommunityToolStagingOutsideToolsRoot()
+    {
+        var root = CreateTempDir();
+        try
+        {
+            var destination = Path.Combine(root, "Tools", "分类", "某工具");
+            Directory.CreateDirectory(destination);
+
+            var staging = ZipExtractHelper.CreateStagingDirectory(destination);
+
+            // 暂存目录里满是 exe，放进 Tools 分类目录会被工具扫描误收录
+            Assert.Equal(Path.GetFullPath(root), Path.GetFullPath(Path.GetDirectoryName(staging)!));
+
+            Directory.Delete(staging, true);
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public void ExtractTolerantAndReplace_LeavesNoStagingDirectoryNextToDestination()
+    {
+        var root = CreateTempDir();
+        try
+        {
+            var zipPath = Path.Combine(root, "tool.zip");
+            CreateZip(zipPath, ("app/run.exe", "bin"u8.ToArray(), false));
+            var destination = Path.Combine(root, "Tools");
+
+            ZipExtractHelper.ExtractTolerantAndReplace(
+                zipPath, destination, ExtractReplaceProfile.CommunityTool);
+
+            Assert.True(File.Exists(Path.Combine(destination, "app", "run.exe")));
+            Assert.Empty(Directory.GetDirectories(root, ".tuba_extract_*"));
+        }
+        finally
+        {
+            Directory.Delete(root, true);
+        }
+    }
+
+    [Fact]
+    public void IsEncryptionFailure_DetectsWin32Error1770_AndIgnoresOtherErrors()
+    {
+        var encryptionError = Marshal.GetExceptionForHR(unchecked((int)0x80071770))!;
+
+        Assert.True(ZipExtractHelper.IsEncryptionFailure(encryptionError));
+        Assert.True(ZipExtractHelper.IsEncryptionFailure(
+            new IOException("wrapper", encryptionError)));
+        Assert.False(ZipExtractHelper.IsEncryptionFailure(new IOException("other")));
     }
 }
