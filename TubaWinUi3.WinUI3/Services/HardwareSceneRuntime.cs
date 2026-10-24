@@ -31,11 +31,13 @@ internal static class HardwareSceneRuntime
 
         public async Task InitializeAsync(Windows.UI.Color background)
         {
+            // 透明背景必须在 EnsureCoreWebView2Async 之前设置——控制器创建时取该值生效，
+            // 之后再设无效（bot 吉祥物「透明三件套」的实测结论：Ensure 前设 + HTML 根元素透明）。
+            _view.DefaultBackgroundColor = background;
             var environment = await WebView2EnvironmentService.GetAsync();
             if (_disposed) return;
             await _view.EnsureCoreWebView2Async(environment);
             if (_disposed) return;
-            _view.DefaultBackgroundColor = background;
             var core = _view.CoreWebView2;
             core.SetVirtualHostNameToFolderMapping("hardware-scene.local",
                 Path.Combine(AppContext.BaseDirectory, "Assets", "HardwareScene"), CoreWebView2HostResourceAccessKind.DenyCors);

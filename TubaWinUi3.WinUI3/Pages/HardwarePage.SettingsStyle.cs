@@ -254,7 +254,7 @@ public sealed partial class HardwarePage
         scene.MessageReceived += HardwareScene_MessageReceived;
         try
         {
-            var color = (SettingsStyleScroll.Background as SolidColorBrush)?.Color ?? Windows.UI.Color.FromArgb(255, 32, 32, 32);
+            var color = (SettingsStyleScroll.Background as SolidColorBrush)?.Color ?? Windows.UI.Color.FromArgb(0, 0, 0, 0);
             await scene.InitializeAsync(color);
             if (version != _sceneLoadVersion || !UseSettingsStyle) return;
             _ = WatchHardwareSceneAsync(version);

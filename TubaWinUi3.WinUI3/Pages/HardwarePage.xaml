@@ -472,7 +472,7 @@
         </Border>
 
         <!-- 硬件全景独立于经典版的一屏缩放布局，按可用宽度重排。 -->
-        <Grid x:Name="SettingsStyleScroll" Visibility="Collapsed" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}" SizeChanged="SettingsStyleScroll_SizeChanged"
+        <Grid x:Name="SettingsStyleScroll" Visibility="Collapsed" Background="Transparent" SizeChanged="SettingsStyleScroll_SizeChanged"
               PointerPressed="HardwareFocusOutside_PointerPressed" KeyDown="HardwareFocus_KeyDown">
             <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
             <StackPanel x:Name="SettingsStyleRoot" Width="1180" MaxWidth="1180" Padding="24,8,24,20" Spacing="12"

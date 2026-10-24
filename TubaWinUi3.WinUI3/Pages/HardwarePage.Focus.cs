@@ -112,9 +112,12 @@ public sealed partial class HardwarePage
             if (version != _hardwareFocusVersion) return;
             var half = HardwareDiagram.ActualWidth / 2;
             var target = new Rect(state.Left ? 12 : half + 12, 12, half - 24, HardwareDiagram.ActualHeight - 24);
+            // 变形期间内容顶部对齐并提前用最终内边距：小卡片的标题/数值钉在左上原位，
+            // 不随垂直居中被甩到卡片中间，换内容时与大面板标题区位置衔接。
+            card.Padding = new Thickness(24);
+            card.VerticalContentAlignment = VerticalAlignment.Top;
             await MorphHardwareCardAsync(state, target, 640, version);
             if (version != _hardwareFocusVersion) return;
-            card.Padding = new Thickness(24);
             card.VerticalContentAlignment = VerticalAlignment.Stretch;
             card.Content = BuildHardwareFocusPanel(state);
             UpdateFocusHint(LocalizationService.L("Hw_FocusHint", "拖动硬件模型旋转 · 点击空白处或按 Esc 返回 · 模型为外观示意"));
@@ -132,27 +135,36 @@ public sealed partial class HardwarePage
     {
         var root = new Grid { RowSpacing = 18, HorizontalAlignment = HorizontalAlignment.Stretch };
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
-        root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         root.RowDefinitions.Add(new RowDefinition { Height = new GridLength(1, GridUnitType.Star) });
-        var header = new Grid { ColumnSpacing = 12 };
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        header.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        // 顶行：左侧标题区与小卡片同构（图标 + 标题 + 摘要），切换时原地保留不淡出；
+        // 操作按钮放右上角，避免出现在标题上方把标题顶下去。
+        var top = new Grid { ColumnSpacing = 16 };
+        top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+        var heading = new StackPanel { Spacing = 8 };
+        var titleRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        titleRow.Children.Add(new FontIcon { Glyph = SettingsHardwareGlyph(state.Label), FontSize = 20 });
+        titleRow.Children.Add(new TextBlock { Text = state.Title, Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"] });
+        heading.Children.Add(titleRow);
+        heading.Children.Add(new TextBlock { Text = state.Summary, TextWrapping = TextWrapping.Wrap,
+            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"] });
+        top.Children.Add(heading);
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         var back = new Button { Content = "← " + LocalizationService.L("Hw_FocusBack", "返回全景"), HorizontalAlignment = HorizontalAlignment.Left };
         AutomationProperties.SetAutomationId(back, "HardwareFocusBack");
         back.Click += (_, _) => _hardwareFocusTransition = RestoreHardwareFocusAsync();
-        header.Children.Add(back);
+        actions.Children.Add(back);
         var copy = new Button { Content = LocalizationService.L("Hw_CopyParameters", "复制参数") };
         AutomationProperties.SetAutomationId(copy, "HardwareFocusCopy");
         copy.Click += (_, _) => TryCopyToClipboard(state.Title + Environment.NewLine +
             (state.Details.Count == 0 ? state.Summary : string.Join(Environment.NewLine, state.Details.Select(item => $"{item.DisplayLabel}：{item.Value}"))));
-        Grid.SetColumn(copy, 1); header.Children.Add(copy); root.Children.Add(header);
-        var heading = new StackPanel { Spacing = 8 };
-        heading.Children.Add(new TextBlock { Text = state.Title, Style = (Style)Application.Current.Resources["SubtitleTextBlockStyle"] });
-        heading.Children.Add(new TextBlock { Text = state.Summary, TextWrapping = TextWrapping.Wrap,
-            Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"] });
+        actions.Children.Add(copy);
+        Grid.SetColumn(actions, 1); top.Children.Add(actions); root.Children.Add(top);
+        // 补充下来的内容：读取提示、模型出处、详细参数——与标题区分离，整体淡入。
+        var supplementary = new StackPanel { Spacing = 14 };
         state.Hint = new TextBlock { Text = LocalizationService.L("Hw_FocusLoading", "正在读取详细参数…"), TextWrapping = TextWrapping.Wrap,
             Foreground = (Brush)Application.Current.Resources["TextFillColorSecondaryBrush"] };
-        heading.Children.Add(state.Hint); Grid.SetRow(heading, 1); root.Children.Add(heading);
+        supplementary.Children.Add(state.Hint);
         if (HardwareModelCredit(state.Label, state.Summary) is { } credit)
         {
             var attribution = new TextBlock { TextWrapping = TextWrapping.Wrap,
@@ -165,16 +177,18 @@ public sealed partial class HardwarePage
             attribution.Inlines.Add(new Microsoft.UI.Xaml.Documents.Run { Text = " · " });
             var license = new Microsoft.UI.Xaml.Documents.Hyperlink { NavigateUri = new Uri("https://creativecommons.org/licenses/by/4.0/") };
             license.Inlines.Add(new Microsoft.UI.Xaml.Documents.Run { Text = "CC BY 4.0" });
-            attribution.Inlines.Add(license); heading.Children.Add(attribution);
+            attribution.Inlines.Add(license);
+            supplementary.Children.Add(attribution);
         }
         state.Rows = new StackPanel { Spacing = 14 };
-        var scroller = new ScrollViewer { Content = state.Rows, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+        supplementary.Children.Add(state.Rows);
+        var scroller = new ScrollViewer { Content = supplementary, VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
             HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, HorizontalAlignment = HorizontalAlignment.Stretch };
         AutomationProperties.SetAutomationId(scroller, "HardwareFocusDetails");
-        Grid.SetRow(scroller, 2); root.Children.Add(scroller);
+        Grid.SetRow(scroller, 1); root.Children.Add(scroller);
         if (!ReduceDiagramMotion)
         {
-            var visual = ElementCompositionPreview.GetElementVisual(root);
+            var visual = ElementCompositionPreview.GetElementVisual(scroller);
             var fade = visual.Compositor.CreateScalarKeyFrameAnimation();
             fade.InsertKeyFrame(0, 0); fade.InsertKeyFrame(1, 1); fade.Duration = TimeSpan.FromMilliseconds(260);
             visual.StartAnimation("Opacity", fade);
