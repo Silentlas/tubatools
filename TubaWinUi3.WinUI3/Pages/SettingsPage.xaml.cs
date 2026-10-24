@@ -131,6 +131,7 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         ["BrandLogo"] = "AppearanceExpander",
         ["Watermark"] = "AppearanceExpander",
         ["HardwareFitScreen"] = "HardwareAiExpander",
+        ["HardwareDiagramStyle"] = "HardwareAiExpander",
         ["HardwareMultiDeviceNewLine"] = "HardwareAiExpander",
         ["ProxyEnabled"] = "GeneralExpander",
         ["ProxyAddress"] = "GeneralExpander",
@@ -163,6 +164,7 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         ["BrandLogo"] = "SettingsBrandLogoCard",
         ["Watermark"] = "SettingsWatermarkCard",
         ["HardwareFitScreen"] = "SettingsHardwareFitScreenCard",
+        ["HardwareDiagramStyle"] = "SettingsHardwareStyleCard",
         ["HardwareMultiDeviceNewLine"] = "SettingsHardwareMultiDeviceNewLineCard",
         ["ProxyEnabled"] = "SettingsProxyCard",
         ["ProxyAddress"] = "SettingsProxyCard",
@@ -210,6 +212,7 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         InitBrandLogoToggle();
         InitWatermarkSettings();
         InitHardwareFitScreenToggle();
+        InitHardwareStyle();
         InitHardwareMultiDeviceNewLineToggle();
         InitCpuzDataSourceStatus();
         InitProxySettings();
@@ -250,6 +253,7 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
 
         // 页面被缓存，构造后不再重跑：开关可能被其它入口改过（如常用页的关闭按钮），进入时重新读取
         InitShowFrequentToggle();
+        InitHardwareStyle();
 
         RestoreExpanderContent(GeneralExpander, _generalExpanderContent);
         RestoreExpanderContent(AppearanceExpander, _appearanceExpanderContent);
@@ -1214,6 +1218,24 @@ public sealed partial class SettingsPage : Page, ILocalizablePage
         if (_watermarkFontInitializing) return;
         if (WatermarkFontComboBox.SelectedItem is string font)
             AppSettings.Set("ScreenshotWatermarkFont", font);
+    }
+
+    private bool _hardwareStyleInitializing;
+
+    private void InitHardwareStyle()
+    {
+        _hardwareStyleInitializing = true;
+        HardwareStyleComboBox.SelectedIndex = AppSettings.GetBool("HardwareDiagramStyle", false) ? 1 : 0;
+        _hardwareStyleInitializing = false;
+        HardwareFitScreenToggle.IsEnabled = HardwareStyleComboBox.SelectedIndex == 0;
+    }
+
+    private void HardwareStyleComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_hardwareStyleInitializing || HardwareStyleComboBox.SelectedIndex < 0) return;
+        var modern = HardwareStyleComboBox.SelectedIndex == 1;
+        AppSettings.Set("HardwareDiagramStyle", modern);
+        HardwareFitScreenToggle.IsEnabled = !modern;
     }
 
     private void InitHardwareFitScreenToggle()

@@ -38,11 +38,23 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
         Unloaded += HardwarePage_Unloaded;
         LoadBrandLogos();
         ApplyCardToolTips();
-        AppSettings.SettingChanged += OnSettingChanged;
+        ActualThemeChanged += (_, _) =>
+        {
+            ApplySceneBackground();
+            if (_sceneReady)
+                _scene?.Post(System.Text.Json.JsonSerializer.Serialize(
+                    new { type = "theme", dark = ActualTheme == ElementTheme.Dark }));
+            DrawHardwareConnectors();
+        };
     }
 
     private void OnSettingChanged(string key)
     {
+        if (key == "HardwareDiagramStyle")
+        {
+            DispatcherQueue.TryEnqueue(ApplyHardwareStyle);
+            return;
+        }
         if (key == "UseCpuzDataSource" || key == "HardwareFitScreen" || key == "HardwareMultiDeviceNewLine")
         {
             if (key == "HardwareFitScreen")
@@ -87,6 +99,9 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
 
     private void HardwarePage_Loaded(object sender, RoutedEventArgs e)
     {
+        AppSettings.SettingChanged -= OnSettingChanged;
+        AppSettings.SettingChanged += OnSettingChanged;
+        ApplyHardwareStyle();
         StartUptimeTimer();
     }
 
@@ -109,12 +124,14 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
     protected override void OnNavigatedFrom(Microsoft.UI.Xaml.Navigation.NavigationEventArgs e)
     {
         base.OnNavigatedFrom(e);
+        SuspendHardwareScene();
         _uptimeTimer?.Stop();
         _uptimeTimer = null;
     }
 
     private void HardwarePage_Unloaded(object sender, RoutedEventArgs e)
     {
+        ReleaseHardwareScene();
         _uptimeTimer?.Stop();
         _uptimeTimer = null;
         AppSettings.SettingChanged -= OnSettingChanged;
@@ -124,6 +141,7 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
     {
         var uptime = TimeSpan.FromMilliseconds(Environment.TickCount64);
         UptimeText.Text = string.Format(LocalizationService.L("Hw_UptimeFormat", "{0}天{1}小时{2}分钟{3}秒"), uptime.Days, uptime.Hours, uptime.Minutes, uptime.Seconds);
+        SettingsStyleUptime.Text = LocalizationService.L("Hw_UptimeCard.Text", "运行时间") + " · " + UptimeText.Text;
     }
 
     /// <summary>语言切换后刷新卡片提示与详情列表（卡片 ToolTip 是附加属性，不能走 Uid）。</summary>
@@ -295,7 +313,12 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
 
     private async Task LoadHardwareInfoAsync(bool forceRefresh = false)
     {
-        if (_dataLoaded)
+        if (forceRefresh)
+        {
+            _hardwareFocusData = null;
+            _hardwareFocusForceRefresh = true;
+        }
+        if (_dataLoaded && !UseSettingsStyle)
         {
             if (FastModeService.IsFastModeEnabled())
             {
@@ -334,7 +357,8 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
             }
 
             ApplySections(sections);
-            HardwareSourceText.Text = $"数据来源：{(useCpuz && CpuzInfoService.CachedInfo is not null ? "WMI / DXGI，CPU-Z 补充" : "WMI / DXGI")} · 系统查询时间：{HardwareInfoService.LastCapturedAt:f}。共享显存为上限，内存设备数不代表可更换插槽。";
+            HardwareSourceText.Text = $"数据来源：{(useCpuz && CpuzInfoService.CachedInfo is not null ? "WMI / DXGI，CPU-Z 补充" : "WMI / DXGI")} / LibreHardwareMonitor · 系统查询时间：{HardwareInfoService.LastCapturedAt:f}。温度为本次刷新读数；共享显存为上限，内存设备数不代表可更换插槽。";
+            UpdateDiagramSource();
             StatusBar.IsOpen = false;
         }
         catch (Exception ex)
@@ -368,6 +392,7 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
         UpdateUptime();
         _animatingDetails = !FastModeService.IsFastModeEnabled();
         DetailsRepeater.ItemsSource = details;
+        ApplyHardwareStyle();
 
         CpuzBadge.Visibility = details.Any(it => it.IsVerified)
             ? Visibility.Visible
@@ -404,10 +429,14 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
         DetailsPanel.Opacity = 0;
     }
 
+    private bool _hardwareInfoLoading;
+
     private void SetLoading(bool isLoading)
     {
-        LoadingRing.IsActive = isLoading;
-        LoadingRing.Visibility = isLoading ? Visibility.Visible : Visibility.Collapsed;
+        _hardwareInfoLoading = isLoading;
+        var showIndicator = isLoading && !UseSettingsStyle;
+        LoadingRing.IsActive = showIndicator;
+        LoadingRing.Visibility = showIndicator ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void Card1_Tapped(object sender, TappedRoutedEventArgs e) => TryCopyToClipboard(ModelText.Text);
@@ -634,11 +663,14 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
             StatusBar.IsOpen = false;
 
             HeaderButtons.Visibility = Visibility.Collapsed;
+            SettingsStyleActions.Visibility = Visibility.Collapsed;
+            if (UseSettingsStyle) await PrepareHardwareSceneScreenshotAsync();
 
             var rtb = new RenderTargetBitmap();
-            await rtb.RenderAsync(LayoutRoot);
+            await rtb.RenderAsync(UseSettingsStyle ? SettingsStyleRoot : LayoutRoot);
 
             HeaderButtons.Visibility = Visibility.Visible;
+            SettingsStyleActions.Visibility = Visibility.Visible;
 
             if (statusWasOpen) StatusBar.IsOpen = true;
 
@@ -646,7 +678,7 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
             var pixelHeight = rtb.PixelHeight;
             var pixels = await GetPixelsAsync(rtb);
 
-            using var contentBmp = new Bitmap(pixelWidth, pixelHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using var contentBmp = new Bitmap(pixelWidth, pixelHeight, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
             var bmpData = contentBmp.LockBits(new System.Drawing.Rectangle(0, 0, pixelWidth, pixelHeight), ImageLockMode.WriteOnly, contentBmp.PixelFormat);
             Marshal.Copy(pixels, 0, bmpData.Scan0, pixels.Length);
             contentBmp.UnlockBits(bmpData);
@@ -660,17 +692,18 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
                 var bgRtb = new RenderTargetBitmap();
                 await bgRtb.RenderAsync(mainWindowBg);
                 var bgPixels = await GetPixelsAsync(bgRtb);
-                bgBmp = new Bitmap(bgRtb.PixelWidth, bgRtb.PixelHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                bgBmp = new Bitmap(bgRtb.PixelWidth, bgRtb.PixelHeight, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
                 var bgBmpData = bgBmp.LockBits(new System.Drawing.Rectangle(0, 0, bgRtb.PixelWidth, bgRtb.PixelHeight), ImageLockMode.WriteOnly, bgBmp.PixelFormat);
                 Marshal.Copy(bgPixels, 0, bgBmpData.Scan0, bgPixels.Length);
                 bgBmp.UnlockBits(bgBmpData);
             }
 
+            using var backgroundBitmap = bgBmp;
             var padding = 56;
             var totalW = pixelWidth + padding * 2;
             var totalH = pixelHeight + padding * 2;
 
-            var isDark = ThemeService.IsDarkEffective;
+            var isDark = ActualTheme == ElementTheme.Dark;
 
             var outerBg1 = isDark
                 ? System.Drawing.Color.FromArgb(255, 32, 32, 32)
@@ -749,6 +782,9 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
         }
         finally
         {
+            RestoreHardwareSceneAfterScreenshot();
+            HeaderButtons.Visibility = Visibility.Visible;
+            SettingsStyleActions.Visibility = Visibility.Visible;
             _isScreenshotting = false;
         }
     }
@@ -768,8 +804,8 @@ public sealed partial class HardwarePage : Page, ILocalizablePage
     private static void DrawWatermark(Graphics g, int totalW, int totalH, string text, string fontFamilyName,
         System.Drawing.Color barBg, System.Drawing.Color textColor)
     {
-        float fontSize = Math.Max(13f, totalH / 40f);
-        using var font = new System.Drawing.Font(new System.Drawing.FontFamily(fontFamilyName), fontSize, System.Drawing.FontStyle.Regular);
+        float fontSize = Math.Clamp(totalH / 70f, 13f, 28f);
+        using var font = new System.Drawing.Font(fontFamilyName, fontSize, System.Drawing.FontStyle.Regular, GraphicsUnit.Pixel);
         var size = g.MeasureString(text, font);
         float padH = 10;
         float padV = 5;

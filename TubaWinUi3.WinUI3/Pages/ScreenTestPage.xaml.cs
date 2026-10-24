@@ -38,7 +38,7 @@ public sealed partial class ScreenTestPage : Page
         "白色", "红色", "绿色", "蓝色", "青色", "品红", "黄色", "灰色", "黑色"
     ];
 
-    private static readonly (string Name, Func<WriteableBitmap> Draw)[] PatternGenerators =
+    private (string Name, Func<WriteableBitmap> Draw)[] PatternGenerators =>
     [
         ("漏光测试", DrawLightBleed),
         ("干扰测试", DrawInterference),
@@ -55,18 +55,22 @@ public sealed partial class ScreenTestPage : Page
         ("棋盘格", DrawCheckerboard),
     ];
 
+    private int PixelWidth => Math.Max(16, (int)Math.Round(ActualWidth * (XamlRoot?.RasterizationScale ?? 1)));
+    private int PixelHeight => Math.Max(16, (int)Math.Round(ActualHeight * (XamlRoot?.RasterizationScale ?? 1)));
     private int TotalSlides => SolidColors.Length + PatternGenerators.Length;
 
-    public ScreenTestPage(Window window)
+    public ScreenTestPage(Window window, int initialIndex = 0)
     {
         InitializeComponent();
         _window = window;
-        _currentIndex = 0;
+        _currentIndex = Math.Clamp(initialIndex, 0, TotalSlides - 1);
 
         HintBorder.Visibility = Visibility.Collapsed;
         HintText.Text = BuildHint();
 
         Loaded += OnLoaded;
+        SizeChanged += (_, _) => { if (IsLoaded) ShowCurrentSlide(); };
+        Unloaded += (_, _) => { _hintTimer?.Stop(); _hintTimer = null; DrawCanvas.Children.Clear(); };
     }
 
     private void OnLoaded(object sender, RoutedEventArgs e)
@@ -116,7 +120,7 @@ public sealed partial class ScreenTestPage : Page
     {
         HintText.Text = BuildHint();
 
-        if (!_hintShownOnce)
+        if (!_hintShownOnce || _hintVisible)
         {
             _hintShownOnce = true;
             ShowHint();
@@ -227,9 +231,9 @@ public sealed partial class ScreenTestPage : Page
         stream.Write(buf, 0, buf.Length);
     }
 
-    private static WriteableBitmap DrawLightBleed()
+    private WriteableBitmap DrawLightBleed()
     {
-        int w = 1920, h = 1080;
+        int w = PixelWidth, h = PixelHeight;
         var bmp = new WriteableBitmap(w, h);
         var buf = new byte[w * h * 4];
         for (int y = 0; y < h; y++)
@@ -248,9 +252,9 @@ public sealed partial class ScreenTestPage : Page
         return bmp;
     }
 
-    private static WriteableBitmap DrawInterference()
+    private WriteableBitmap DrawInterference()
     {
-        int w = 1920, h = 1080;
+        int w = PixelWidth, h = PixelHeight;
         var bmp = new WriteableBitmap(w, h);
         var buf = new byte[w * h * 4];
         var rand = new Random(42);
@@ -266,9 +270,9 @@ public sealed partial class ScreenTestPage : Page
         return bmp;
     }
 
-    private static WriteableBitmap DrawFocus()
+    private WriteableBitmap DrawFocus()
     {
-        int w = 1920, h = 1080;
+        int w = PixelWidth, h = PixelHeight;
         var bmp = new WriteableBitmap(w, h);
         var buf = new byte[w * h * 4];
         int cx = w / 2, cy = h / 2;
@@ -287,9 +291,9 @@ public sealed partial class ScreenTestPage : Page
         return bmp;
     }
 
-    private static WriteableBitmap DrawBreathing()
+    private WriteableBitmap DrawBreathing()
     {
-        int w = 1920, h = 1080;
+        int w = PixelWidth, h = PixelHeight;
         var bmp = new WriteableBitmap(w, h);
         var buf = new byte[w * h * 4];
         int cx = w / 2, cy = h / 2;
@@ -311,9 +315,9 @@ public sealed partial class ScreenTestPage : Page
         return bmp;
     }
 
-    private static WriteableBitmap DrawContrastBright()
+    private WriteableBitmap DrawContrastBright()
     {
-        int w = 1920, h = 1080;
+        int w = PixelWidth, h = PixelHeight;
         var bmp = new WriteableBitmap(w, h);
         var buf = new byte[w * h * 4];
         int cols = 10;
@@ -332,9 +336,9 @@ public sealed partial class ScreenTestPage : Page
         return bmp;
     }
 
-    private static WriteableBitmap DrawContrastDark()
+    private WriteableBitmap DrawContrastDark()
     {
-        int w = 1920, h = 1080;
+        int w = PixelWidth, h = PixelHeight;
         var bmp = new WriteableBitmap(w, h);
         var buf = new byte[w * h * 4];
         int cols = 10;
@@ -353,9 +357,9 @@ public sealed partial class ScreenTestPage : Page
         return bmp;
     }
 
-    private static WriteableBitmap DrawGrayscaleRamp()
+    private WriteableBitmap DrawGrayscaleRamp()
     {
-        int w = 1920, h = 1080;
+        int w = PixelWidth, h = PixelHeight;
         var bmp = new WriteableBitmap(w, h);
         var buf = new byte[w * h * 4];
         for (int y = 0; y < h; y++)
@@ -370,9 +374,9 @@ public sealed partial class ScreenTestPage : Page
         return bmp;
     }
 
-    private static WriteableBitmap DrawRedRamp()
+    private WriteableBitmap DrawRedRamp()
     {
-        int w = 1920, h = 1080;
+        int w = PixelWidth, h = PixelHeight;
         var bmp = new WriteableBitmap(w, h);
         var buf = new byte[w * h * 4];
         for (int y = 0; y < h; y++)
@@ -387,9 +391,9 @@ public sealed partial class ScreenTestPage : Page
         return bmp;
     }
 
-    private static WriteableBitmap DrawGreenRamp()
+    private WriteableBitmap DrawGreenRamp()
     {
-        int w = 1920, h = 1080;
+        int w = PixelWidth, h = PixelHeight;
         var bmp = new WriteableBitmap(w, h);
         var buf = new byte[w * h * 4];
         for (int y = 0; y < h; y++)
@@ -404,9 +408,9 @@ public sealed partial class ScreenTestPage : Page
         return bmp;
     }
 
-    private static WriteableBitmap DrawBlueRamp()
+    private WriteableBitmap DrawBlueRamp()
     {
-        int w = 1920, h = 1080;
+        int w = PixelWidth, h = PixelHeight;
         var bmp = new WriteableBitmap(w, h);
         var buf = new byte[w * h * 4];
         for (int y = 0; y < h; y++)
@@ -421,9 +425,9 @@ public sealed partial class ScreenTestPage : Page
         return bmp;
     }
 
-    private static WriteableBitmap DrawSaturation()
+    private WriteableBitmap DrawSaturation()
     {
-        int w = 1920, h = 1080;
+        int w = PixelWidth, h = PixelHeight;
         var bmp = new WriteableBitmap(w, h);
         var buf = new byte[w * h * 4];
         int cols = 7;
@@ -444,9 +448,9 @@ public sealed partial class ScreenTestPage : Page
         return bmp;
     }
 
-    private static WriteableBitmap DrawGrid()
+    private WriteableBitmap DrawGrid()
     {
-        int w = 1920, h = 1080;
+        int w = PixelWidth, h = PixelHeight;
         var bmp = new WriteableBitmap(w, h);
         var buf = new byte[w * h * 4];
         int step = 40;
@@ -463,9 +467,9 @@ public sealed partial class ScreenTestPage : Page
         return bmp;
     }
 
-    private static WriteableBitmap DrawCheckerboard()
+    private WriteableBitmap DrawCheckerboard()
     {
-        int w = 1920, h = 1080;
+        int w = PixelWidth, h = PixelHeight;
         var bmp = new WriteableBitmap(w, h);
         var buf = new byte[w * h * 4];
         int size = 40;

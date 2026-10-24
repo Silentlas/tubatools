@@ -2,6 +2,11 @@
     "$schema":  "英文界面覆盖文件：加载 tools.json 后按 match 合并这些字段（未覆盖的字段与条目回退中文）。English overlay for tools.json; merged by match. Edited manually - keep match values identical to tools.json.",
     "tools":  [
                   {
+                      "match": "屏幕工具",
+                      "description": "Inspect monitor EDID, gamut coverage, HDR and ICC profiles, export a report and run full-screen display tests.",
+                      "tags": ["Display", "EDID", "HDR", "Gamut", "Dead pixels"]
+                  },
+                  {
                       "match":  "CPU-Z",
                       "description":  "CPU, motherboard, memory, and GPU basic information viewer.",
                       "publisher":  "CPUID",

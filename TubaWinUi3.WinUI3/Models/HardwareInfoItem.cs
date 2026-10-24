@@ -10,6 +10,12 @@ public sealed class HardwareInfoItem
 
     public bool IsVerified { get; set; }
 
+    /// <summary>替换数据源时仍需保留的补充信息（如 WMI 报告的处理器缓存）。</summary>
+    public string? SupplementalValue { get; set; }
+
+    /// <summary>独立物理设备的完整描述；经典版仍使用聚合的 Value，全景按设备逐张展示。</summary>
+    public IReadOnlyList<string> DeviceValues { get; set; } = [];
+
     public string? NicknameValue { get; set; }
 
     /// <summary>显示用标签：按当前界面语言翻译（Label 本身是数据键，服务内部比较仍用中文）。</summary>

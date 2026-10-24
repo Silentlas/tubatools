@@ -5,6 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:l="using:WinUI3Localizer"
+    xmlns:toolkit="using:CommunityToolkit.WinUI.Controls"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     NavigationCacheMode="Enabled"
     mc:Ignorable="d">
@@ -822,6 +823,18 @@
                             <ScrollViewer VerticalScrollBarVisibility="Disabled" HorizontalScrollMode="Disabled">
                             <StackPanel Spacing="16" Padding="0,4,0,0">
 
+                                <toolkit:SettingsCard x:Name="SettingsHardwareStyleCard"
+                                    Header="硬件信息界面样式" Description="选择经典列表或硬件全景；默认使用经典样式，切换后立即生效。"
+                                    l:Uids.Uid="Settings_HardwareStyle">
+                                    <toolkit:SettingsCard.HeaderIcon><FontIcon Glyph="&#xE771;" /></toolkit:SettingsCard.HeaderIcon>
+                                    <ComboBox x:Name="HardwareStyleComboBox" MinWidth="180"
+                                              AutomationProperties.AutomationId="HardwareStyleComboBox"
+                                              AutomationProperties.Name="硬件信息界面样式"
+                                              SelectionChanged="HardwareStyleComboBox_SelectionChanged">
+                                        <ComboBoxItem Content="经典样式（默认）" l:Uids.Uid="Settings_HardwareStyleClassic" />
+                                        <ComboBoxItem Content="硬件全景（部件标注）" l:Uids.Uid="Settings_HardwareStyleWindows" />
+                                    </ComboBox>
+                                </toolkit:SettingsCard>
                                 <Border x:Name="SettingsHardwareFitScreenCard" Style="{StaticResource SettingsCardStyle}">
                                     <Grid ColumnSpacing="16">
                                         <Grid.ColumnDefinitions>

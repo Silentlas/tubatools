@@ -11,6 +11,7 @@ public static class UnifiedSearchService
 
     private static readonly SettingEntry[] SettingsEntries =
     [
+        new("Search_SettingHardwareStyle", "硬件信息界面样式", "Search_SettingHardwareStyleDesc", "切换经典列表与硬件全景部件标注", "\uE7F8", "HardwareDiagramStyle"),
         new("Search_SettingTheme", "应用主题", "Search_SettingThemeDesc", "选择浅色、深色或跟随系统", "\uE790", "Theme"),
         new("Search_SettingCompact", "简洁列表模式", "Search_SettingCompactDesc", "原版图吧工具箱的样式", "\uE8FD", "CompactMode"),
         new("Search_SettingBrandLogo", "显示品牌 Logo", "Search_SettingBrandLogoDesc", "在硬件信息页面显示品牌图标", "\uE8F1", "BrandLogo"),

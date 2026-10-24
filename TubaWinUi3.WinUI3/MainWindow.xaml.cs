@@ -530,6 +530,7 @@ public sealed partial class MainWindow : Window
         // 本地 ONNX 模型句柄（AI 助手的「本地模型」提供商）显式释放；有界等待——
         // 模型正在加载时绝不阻塞后面的托盘/单实例清理（超时则放弃，进程退出由内核回收）
         try { Services.Ai.Onnx.LocalModelRuntime.TryUnload(TimeSpan.FromSeconds(3)); } catch { }
+        try { Services.DisplayTools.DisplayColorAdjustment.RestoreAll(); } catch { }
         // 托盘图标必须显式移除：进程退出后残留的图标要等鼠标划过去才消失
         try { TrayIconService.Dispose(); } catch { }
 

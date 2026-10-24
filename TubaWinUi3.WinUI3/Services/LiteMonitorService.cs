@@ -398,28 +398,38 @@ public sealed class LiteMonitorService : IDisposable
     public static Dictionary<string, float> ReadDiskTemperatures()
     {
         var result = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase);
-        Instance.EnsureInit();
         lock (s_lock)
         {
-            if (s_computer == null) return result;
+            // 硬件概览只读磁盘，不为温度查询启动 CPU/GPU 监控或 PawnIO 驱动。
+            // 已有监控实例时复用，否则使用读取后即关闭的 storage-only 实例。
+            Computer? storageProbe = null;
             try
             {
-                foreach (IHardware hw in s_computer.Hardware)
-                    hw.Update();
-                foreach (IHardware hw in s_computer.Hardware)
+                var computer = s_computer;
+                if (computer is null)
+                {
+                    storageProbe = new Computer { IsStorageEnabled = true };
+                    storageProbe.Open();
+                    computer = storageProbe;
+                }
+                foreach (IHardware hw in computer.Hardware)
                 {
                     if (hw.HardwareType != HardwareType.Storage) continue;
+                    try { hw.Update(); } catch { continue; }
                     foreach (var sensor in hw.Sensors)
                     {
                         if (sensor.SensorType != SensorType.Temperature || !sensor.Value.HasValue) continue;
                         if (Has(sensor.Name, "warning") || Has(sensor.Name, "critical")) continue;
+                        var value = sensor.Value.Value;
+                        if (!float.IsFinite(value) || value <= -40 || value >= 150) continue;
                         if (result.ContainsKey(hw.Name)) continue;
-                        result[hw.Name] = sensor.Value.Value;
+                        result[hw.Name] = value;
                         break;
                     }
                 }
             }
             catch { }
+            finally { try { storageProbe?.Close(); } catch { } }
         }
         return result;
     }

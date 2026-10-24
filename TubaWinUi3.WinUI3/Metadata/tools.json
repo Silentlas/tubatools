@@ -1582,6 +1582,13 @@
       ]
     },
     {
+      "match": "屏幕工具",
+      "builtin": "display-tools",
+      "categories": [
+        "显示器工具"
+      ]
+    },
+    {
       "match": "屏幕坏点检测",
       "builtin": "screen-test",
       "categories": [

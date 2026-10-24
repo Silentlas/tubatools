@@ -17,7 +17,7 @@ namespace TubaWinUi3;
 public partial class App : Application
 {
     private MainWindow? _window;
-    public static MainWindow? MainWindow => ((App)Current)?._window;
+    public static MainWindow? MainWindow => (Current as App)?._window;
     public static bool IsLiteMode { get; set; } = false;
 
     private static bool _exiting;

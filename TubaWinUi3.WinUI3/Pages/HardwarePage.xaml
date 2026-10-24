@@ -10,6 +10,12 @@
     mc:Ignorable="d">
 
     <Page.Resources>
+        <Style x:Key="SettingsHardwareCaptionStyle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorSecondaryBrush}" />
+        </Style>
+        <Style x:Key="SettingsHardwareCalloutStyle" TargetType="Button" BasedOn="{StaticResource DefaultButtonStyle}">
+            <Setter Property="Background" Value="{ThemeResource SolidBackgroundFillColorTertiaryBrush}" />
+        </Style>
         <Style x:Key="MetricCardStyle" TargetType="Border">
             <Setter Property="Padding" Value="16" />
             <Setter Property="CornerRadius" Value="8" />
@@ -248,6 +254,13 @@
                     </StackPanel>
 
                     <StackPanel x:Name="HeaderButtons" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <DropDownButton Content="视图" l:Uids.Uid="Hw_ViewMenu" AutomationProperties.AutomationId="HardwareClassicViewMenu">
+                            <DropDownButton.Flyout><MenuFlyout>
+                                <RadioMenuFlyoutItem x:Name="ClassicModeMenu" Text="经典样式" l:Uids.Uid="Hw_ClassicMode" Tag="classic" Click="HardwareMode_Click" />
+                                <RadioMenuFlyoutItem x:Name="DiagramModeMenu" Text="3D 硬件全景" l:Uids.Uid="Hw_DiagramMode" Tag="diagram" Click="HardwareMode_Click" />
+                            </MenuFlyout></DropDownButton.Flyout>
+                        </DropDownButton>
+
 
                         <Button
                             Padding="16,8"
@@ -457,6 +470,69 @@
                 </StackPanel>
             </Grid>
         </Border>
+
+        <!-- 硬件全景独立于经典版的一屏缩放布局，按可用宽度重排。 -->
+        <Grid x:Name="SettingsStyleScroll" Visibility="Collapsed" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}" SizeChanged="SettingsStyleScroll_SizeChanged"
+              PointerPressed="HardwareFocusOutside_PointerPressed" KeyDown="HardwareFocus_KeyDown">
+            <Viewbox Stretch="Uniform" StretchDirection="DownOnly">
+            <StackPanel x:Name="SettingsStyleRoot" Width="1180" MaxWidth="1180" Padding="24,8,24,20" Spacing="12"
+                        HorizontalAlignment="Center" SizeChanged="SettingsStyleRoot_SizeChanged">
+                <Grid x:Name="SettingsStyleHeader" ColumnSpacing="16" RowSpacing="12">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="硬件信息" l:Uids.Uid="Hw_Title" Style="{StaticResource PageTitleStyle}" />
+                    <StackPanel x:Name="SettingsStyleActions" Grid.Column="1" Orientation="Horizontal" Spacing="8">
+                        <DropDownButton Content="视图" l:Uids.Uid="Hw_ViewMenu" AutomationProperties.AutomationId="HardwareDiagramViewMenu">
+                            <DropDownButton.Flyout><MenuFlyout>
+                                <RadioMenuFlyoutItem x:Name="ModernClassicModeMenu" Text="经典样式" l:Uids.Uid="Hw_ClassicMode" Tag="classic" Click="HardwareMode_Click" />
+                                <RadioMenuFlyoutItem x:Name="ModernDiagramModeMenu" Text="3D 硬件全景" l:Uids.Uid="Hw_DiagramMode" Tag="diagram" Click="HardwareMode_Click" />
+                                <MenuFlyoutSeparator />
+                                <ToggleMenuFlyoutItem x:Name="HardwareAutoRotate" Text="自动旋转" l:Uids.Uid="Hw_AutoRotate" Click="HardwareAutoRotate_Click" AutomationProperties.AutomationId="HardwareAutoRotate" />
+                                <MenuFlyoutItem x:Name="HardwareReplayMenu" Text="重播开机" l:Uids.Uid="Hw_ReplayBoot" Click="HardwareReplay_Click" AutomationProperties.AutomationId="HardwareReplay" />
+                            </MenuFlyout></DropDownButton.Flyout>
+                        </DropDownButton>
+
+                        <Button Content="详细信息" l:Uids.Uid="Hw_ModernDetail" Click="DetailButton_Click" AutomationProperties.AutomationId="HardwareModernDetails" />
+                        <Button Content="刷新" l:Uids.Uid="Hw_ModernRefresh" Click="RefreshButton_Click" AutomationProperties.AutomationId="HardwareModernRefresh" />
+                        <DropDownButton Content="分享" l:Uids.Uid="Hw_ModernShare" AutomationProperties.AutomationId="HardwareModernShare">
+                            <DropDownButton.Flyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem Text="截图" l:Uids.Uid="Hw_Screenshot" Click="ScreenshotButton_Click" />
+                                    <MenuFlyoutItem Text="复制纯文字" l:Uids.Uid="Hw_CopyPlainText" Click="CopyTextButton_Click" />
+                                    <MenuFlyoutItem Text="复制 Markdown" l:Uids.Uid="Hw_CopyMarkdown" Click="CopyMarkdownButton_Click" />
+                                </MenuFlyout>
+                            </DropDownButton.Flyout>
+                        </DropDownButton>
+                    </StackPanel>
+                </Grid>
+                <StackPanel Spacing="4">
+                    <TextBlock x:Name="SettingsStyleDeviceName" Style="{StaticResource SubtitleTextBlockStyle}" TextWrapping="Wrap" />
+                    <TextBlock x:Name="SettingsStyleModel" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+                    <TextBlock x:Name="SettingsStyleUptime" Style="{StaticResource CaptionTextBlockStyle}" />
+                </StackPanel>
+                <Grid x:Name="HardwareDiagram" Height="640" Background="Transparent" SizeChanged="HardwareDiagram_SizeChanged">
+                    <Canvas x:Name="HardwareCalloutCanvas" Canvas.ZIndex="2" />
+                    <Grid x:Name="HardwareDeviceStage">
+                        <Grid x:Name="HardwareModelViewport">
+                            <Image x:Name="HardwareModelImage" Stretch="Fill" Visibility="Collapsed" />
+                            <ContentControl x:Name="HardwareSceneHost" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" AutomationProperties.AutomationId="HardwareInteractiveModel" />
+                            <TextBlock x:Name="HardwareModelError" Visibility="Collapsed" Text="3D 预览暂不可用，硬件参数仍可查看" TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Grid>
+                    </Grid>
+
+                    <Canvas x:Name="HardwareConnectors" Canvas.ZIndex="1" IsHitTestVisible="False" />
+                </Grid>
+                <TextBlock x:Name="SettingsStyleSource" Style="{StaticResource CaptionTextBlockStyle}"
+                           Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextWrapping="Wrap" />
+            </StackPanel>
+            </Viewbox>
+        </Grid>
 
         <ProgressRing
             x:Name="LoadingRing"

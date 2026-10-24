@@ -259,6 +259,16 @@ function Build-ArchPackage {
         return $null
     }
 
+    # 商店包不允许内置内核（Tools 由用户首次启动时下载）。SDK 的默认 Content 项会把
+    # 项目目录下所有 png/jpg/ico 当资源，Tools/**/*.png 与残留的 bin-verify/ 会悄悄进包，
+    # 曾导致 1.7.2 包从 ~110MB 膨胀到 ~390MB。出现即视为构建污染，宁可失败也不出包。
+    foreach ($stray in @('Tools', 'bin-verify')) {
+        if (Test-Path -LiteralPath (Join-Path $archDir $stray)) {
+            Write-Host "  ERROR: publish output contains $stray/ (商店包不允许内置内核或构建残留)" -ForegroundColor Red
+            return $null
+        }
+    }
+
     # Assets / Metadata / CertBlock 已由 csproj 的 Content 项（CopyToOutputDirectory=PreserveNewest）
     # 随 publish 一并输出，无需在此重复拷贝。
 

@@ -48,6 +48,7 @@ public static class BuiltinToolRegistry
         if (!RuntimeHelper.IsPackagedContext)
             Register(new CommunityToolBuiltinTool());
         Register(new ScreenTestTool());
+        Register(new DisplayToolsTool());
         Register(new ServiceCenterTool());
         Register(new OfficialWebsitesTool());
         Register(new DotnetCompletionTool());

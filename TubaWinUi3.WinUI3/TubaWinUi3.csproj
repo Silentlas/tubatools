@@ -23,13 +23,18 @@
     <Nullable>enable</Nullable>
     <Version>1.6.4</Version>
     <SatelliteResourceLanguages>zh-Hans;zh-Hant;en</SatelliteResourceLanguages>
-    <DefaultItemExcludes>$(DefaultItemExcludes);artifacts\**;publish*\**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);artifacts\**;publish*\**;bin-verify\**</DefaultItemExcludes>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <NoWarn>CA2252;CA2014;NU1510</NoWarn>
     <!-- 界面本地化 resw 由 WinUI3Localizer 直接读取（exe 旁 Strings/<lang>/*.resw），不参与 PRI：
          MakePri 会把 "Key.Property" 形式的资源名解析为路径层级，与纯 "Key" 项冲突（PRI175/PRI278）；
          且默认 glob "**/*.resw" 在自定义 BaseOutputPath 时会捡到输出目录里的副本。 -->
     <EnableDefaultPRIResourceItems>false</EnableDefaultPRIResourceItems>
+  </PropertyGroup>
+  <!-- 商店/精简包不含内核。SDK 的默认 Content 项会把项目目录下所有 png/jpg/ico
+       当成资源（Tools/**/*.png 是工具截图，260+ 个），只移除下面的显式 Content 项不够。 -->
+  <PropertyGroup Condition="'$(ExcludeToolsFromPublish)' == 'true'">
+    <DefaultItemExcludes>$(DefaultItemExcludes);Tools\**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="TubaWinUi3.Tests" />

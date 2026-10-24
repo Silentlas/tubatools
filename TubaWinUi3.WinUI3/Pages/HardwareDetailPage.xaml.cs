@@ -564,6 +564,48 @@ public sealed partial class HardwareDetailPage : Page, ILocalizablePage
 
     #region 行项目构建
 
+    internal static List<HardwareInfoItem> BuildFocusItems(HardwareDetailData data, string label, string summary, int index)
+    {
+        // Match by the displayed device name first: summary lists may filter virtual devices.
+        List<T> Device<T>(IReadOnlyList<T> devices, Func<T, string?> name)
+        {
+            var matches = devices.Where(device => !string.IsNullOrWhiteSpace(name(device))
+                && summary.Contains(name(device)!, StringComparison.OrdinalIgnoreCase)).ToList();
+            if (matches.Count == 1) return matches;
+            var device = devices.ElementAtOrDefault(index);
+            return device is not null ? [device] : [];
+        }
+        return label switch
+        {
+            "处理器" => BuildCpuItems(data.Cpu),
+            "主板" => BuildBoardItems(data.Motherboard),
+            "BIOS" => BuildBoardItems(data.Motherboard).Where(item => item.Label.Contains("BIOS") || item.Label.Contains("SMBIOS")).ToList(),
+            "内存" => BuildFocusMemoryItems(data.Memory, summary, index),
+            "显卡" => BuildGpuItems(Device(data.Gpus, device => device.Name)),
+            "硬盘" => BuildDiskItems(Device(data.Disks, device => device.Model)),
+            "显示器" => BuildDisplayItems(Device(data.Displays, device => device.Name)),
+            "声卡" => BuildSoundItems(Device(data.SoundDevices, device => device.Name)),
+            "网卡" => BuildNetworkItems(Device(data.NetworkAdapters, device => device.Name)),
+            "电池" => BuildBatteryItems(data.Battery),
+            "NPU" => BuildNpuItems(data.Npu),
+            "系统" => BuildWindowsItems(data.Windows),
+            _ => []
+        };
+    }
+
+    private static List<HardwareInfoItem> BuildFocusMemoryItems(MemoryDetail memory, string summary, int index)
+    {
+        if (memory.MemoryType?.Contains("LPDDR", StringComparison.OrdinalIgnoreCase) == true || memory.Modules.Count < 2)
+            return BuildMemoryItems(memory);
+        var modules = memory.Modules.Where(module => module.Capacity != "空").ToList();
+        var matching = modules.Where(module => !string.IsNullOrWhiteSpace(module.PartNumber)
+            && summary.Contains(module.PartNumber, StringComparison.OrdinalIgnoreCase)).ToList();
+        var selected = matching.Count == 1 ? matching[0] : modules.ElementAtOrDefault(index);
+        if (selected is null) return BuildMemoryItems(memory);
+        return BuildMemoryItems(new MemoryDetail { TotalCapacity = selected.Capacity, MemoryType = selected.Type ?? memory.MemoryType,
+            TotalSlots = memory.TotalSlots, UsedSlots = memory.UsedSlots, MaxCapacity = memory.MaxCapacity, Modules = [selected] });
+    }
+
     private static void AddIf(List<HardwareInfoItem> items, string label, string? value)
     {
         if (!string.IsNullOrWhiteSpace(value))

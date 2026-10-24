@@ -57,6 +57,15 @@ public static class HardwareInfoService
         public uint dmPelsHeight;
         public uint dmDisplayFlags;
         public uint dmDisplayFrequency;
+        // DEVMODEW 必须保留完整的 220 字节布局。
+        public uint dmICMMethod;
+        public uint dmICMIntent;
+        public uint dmMediaType;
+        public uint dmDitherType;
+        public uint dmReserved1;
+        public uint dmReserved2;
+        public uint dmPanningWidth;
+        public uint dmPanningHeight;
     }
 
     private const int ENUM_CURRENT_SETTINGS = -1;
@@ -329,7 +338,8 @@ public static class HardwareInfoService
                     name += $" ({cpuz.CpuCodeName})";
                 if (cpuz.CpuCores > 0)
                     name += $" {CoresThreadsLabel(cpuz)}";
-                cpuItem.Value = name;
+                cpuItem.Value = Join(name, cpuItem.SupplementalValue);
+                cpuItem.DeviceValues = [cpuItem.Value];
                 cpuItem.BrandKey = DetectCpuBrand(cpuz.CpuName);
                 cpuItem.IsVerified = true;
             }
@@ -387,7 +397,7 @@ public static class HardwareInfoService
             var gpuItem = details.FirstOrDefault(it => it.Label == "显卡");
             if (gpuItem != null)
             {
-                var gpuLabel = string.Join(GetSeparator(), cpuz.Gpus
+                var gpuDevices = cpuz.Gpus
                     .Where(g => !string.IsNullOrWhiteSpace(g.Name))
                     .Select(g =>
                     {
@@ -395,10 +405,12 @@ public static class HardwareInfoService
                         if (!string.IsNullOrWhiteSpace(g.MemorySize))
                             s += $" ({g.MemorySize})";
                         return s;
-                    }));
+                    }).ToArray();
+                var gpuLabel = string.Join(GetSeparator(), gpuDevices);
                 if (!string.IsNullOrWhiteSpace(gpuLabel))
                 {
                     gpuItem.Value = gpuLabel;
+                    gpuItem.DeviceValues = gpuDevices;
                     gpuItem.BrandKey = DetectGpuBrand(cpuz.Gpus[0].Name);
                     gpuItem.IsVerified = true;
                 }
@@ -414,6 +426,7 @@ public static class HardwareInfoService
                 if (!string.IsNullOrWhiteSpace(memLabel))
                 {
                     memItem.Value = memLabel;
+                    memItem.DeviceValues = BuildCpuzMemoryDevices(cpuz, memLabel);
                     memItem.IsVerified = true;
                 }
             }
@@ -455,6 +468,15 @@ public static class HardwareInfoService
         return string.Join(" ", parts);
     }
 
+    internal static IReadOnlyList<string> BuildCpuzMemoryDevices(CpuzInfo cpuz, string aggregate)
+    {
+        if (cpuz.MemDevices.Count < 2 || (cpuz.MemoryType?.Contains("LPDDR", StringComparison.OrdinalIgnoreCase) ?? false))
+            return [aggregate];
+        return cpuz.MemDevices.Select(module => Join(CleanMemManufacturer(module.Manufacturer),
+            module.PartNumber, module.Size, module.Type ?? cpuz.MemoryType,
+            module.Speed ?? cpuz.MemorySpeed, module.Designation)).ToArray();
+    }
+
     private static List<HardwareInfoSection> DeepCopy(IReadOnlyList<HardwareInfoSection> source)
     {
         var result = new List<HardwareInfoSection>(source.Count);
@@ -472,7 +494,9 @@ public static class HardwareInfoService
                     Label = item.Label,
                     Value = item.Value,
                     BrandKey = item.BrandKey,
-                    IsVerified = item.IsVerified
+                    IsVerified = item.IsVerified,
+                    SupplementalValue = item.SupplementalValue,
+                    DeviceValues = item.DeviceValues.ToArray()
                 });
             }
             result.Add(newSection);
@@ -618,7 +642,9 @@ public static class HardwareInfoService
     {
         var os = First("Win32_OperatingSystem");
 
-        section.Items.Add(Item("系统", Join(Get(os, "Caption"), Get(os, "OSArchitecture"))));
+        var windows = new WindowsDetail();
+        FillWindowsVersion(windows, os);
+        section.Items.Add(Item("系统", FormatWindowsSummary(windows.ProductName, windows.DisplayVersion, windows.Build)));
         section.Items.Add(Item("版本", Get(os, "Version")));
         section.Items.Add(Item("运行时间", FormatUptime()));
     }
@@ -626,32 +652,32 @@ public static class HardwareInfoService
     private static void FillDetails(HardwareInfoSection section)
     {
         var boardTask = Task.Run(() => BoardModel());
-        var cpuTask = Task.Run(() => FirstName("Win32_Processor"));
-        var memTask = Task.Run(() => FormatMemory());
-        var gpuTask = Task.Run(() => BuildGpuDisplayText());
+        var cpuTask = Task.Run(BuildCpuSummary);
+        var memTask = Task.Run(BuildMemorySummary);
+        var gpuTask = Task.Run(BuildGpuDeviceValues);
         var npuTask = Task.Run(() => DetectNpuName());
-        var displayTask = Task.Run(() => FormatDisplays());
-        var diskTask = Task.Run(() => FormatDisks());
-        var soundTask = Task.Run(() => JoinNames("Win32_SoundDevice", item =>
+        var displayTask = Task.Run(BuildDisplayDeviceValues);
+        var diskTask = Task.Run(() => BuildDiskDeviceValues(BuildDiskDetails(includeFullDetails: false)));
+        var batteryTask = Task.Run(() => Safe(BuildBatteryDetail, null));
+        var soundTask = Task.Run(() => DeviceNames("Win32_SoundDevice", item =>
         {
             var name = Get(item, "Name");
             return !ContainsAny(name, "Virtual", "虚拟", "Software", "Remote Audio", "Stereo Mix", "Wave", "VB-Audio", "VBAN", "Voicemeeter", "CABLE", "VAC", "Senary Audio", "Nahimic Easy Surround", "Nahimic mirroring", "USB 音频", "蓝牙音频", "蓝牙");
         }));
-        var netTask = Task.Run(() => JoinNames("Win32_NetworkAdapter", item =>
+        var netTask = Task.Run(() => DeviceNames("Win32_NetworkAdapter", item =>
             IsTrue(item, "PhysicalAdapter") &&
             !ContainsAny(Get(item, "Name"), "Virtual", "Bluetooth", "WAN Miniport")));
 
-        Task.WaitAll(boardTask, cpuTask, memTask, gpuTask, npuTask, displayTask, diskTask, soundTask, netTask);
+        Task.WaitAll(boardTask, cpuTask, memTask, gpuTask, npuTask, displayTask, diskTask, soundTask, netTask, batteryTask);
 
         section.Items.Add(Item("主板", boardTask.Result));
-        var cpuName = cpuTask.Result;
-        var cpuItem = Item("处理器", cpuName);
+        var cpuItem = cpuTask.Result;
+        var cpuName = cpuItem.Value;
         cpuItem.BrandKey = DetectCpuBrand(cpuName);
         section.Items.Add(cpuItem);
-        section.Items.Add(Item("内存", memTask.Result));
-        var gpuDisplay = gpuTask.Result;
-        var gpuItem = Item("显卡", gpuDisplay);
-        gpuItem.BrandKey = DetectGpuBrand(gpuDisplay);
+        section.Items.Add(memTask.Result);
+        var gpuItem = DeviceItem("显卡", gpuTask.Result);
+        gpuItem.BrandKey = DetectGpuBrand(gpuItem.Value);
         section.Items.Add(gpuItem);
         var npuName = npuTask.Result;
         if (npuName != null)
@@ -659,10 +685,50 @@ public static class HardwareInfoService
             var tops = NpuCatalog.LookupTops(npuName, cpuName);
             section.Items.Add(Item("NPU", tops != null ? $"{npuName}（{tops}）" : npuName));
         }
-        section.Items.Add(Item("显示器", displayTask.Result));
-        section.Items.Add(Item("硬盘", diskTask.Result));
-        section.Items.Add(Item("声卡", soundTask.Result));
-        section.Items.Add(Item("网卡", netTask.Result));
+        section.Items.Add(DeviceItem("显示器", displayTask.Result));
+        section.Items.Add(DeviceItem("硬盘", diskTask.Result));
+        if (batteryTask.Result is { } battery)
+            section.Items.Add(Item("电池", FormatBatterySummary(battery)));
+        section.Items.Add(DeviceItem("声卡", soundTask.Result));
+        section.Items.Add(DeviceItem("网卡", netTask.Result));
+    }
+
+    private static HardwareInfoItem BuildCpuSummary()
+    {
+        var processors = Query("Win32_Processor").ToList();
+        var entries = processors.Select(cpu =>
+        {
+            var specs = new List<string>();
+            var cores = ToInt(Get(cpu, "NumberOfCores"));
+            var threads = ToInt(Get(cpu, "NumberOfLogicalProcessors"));
+            if (cores > 0) specs.Add($"{cores} 核心");
+            if (threads > 0) specs.Add($"{threads} 线程");
+            var cache = FormatCpuCacheSummary(Get(cpu, "L2CacheSize"), Get(cpu, "L3CacheSize"));
+            if (!string.IsNullOrWhiteSpace(cache)) specs.Add(cache);
+            return Join(Get(cpu, "Name"), string.Join(" · ", specs));
+        });
+        var item = DeviceItem("处理器", entries);
+        // CPU-Z 替换名称/核心数时，保留它未提供的 WMI 缓存信息。
+        if (processors.Count == 1)
+            item.SupplementalValue = FormatCpuCacheSummary(Get(processors[0], "L2CacheSize"), Get(processors[0], "L3CacheSize"));
+        return item;
+    }
+
+    internal static string FormatCpuCacheSummary(string? l2, string? l3) => string.Join(" · ",
+        new[] { FormatCacheSize(l2) is { } second ? $"L2 缓存 {second}" : null,
+            FormatCacheSize(l3) is { } third ? $"L3 缓存 {third}" : null }
+        .Where(value => value is not null));
+
+    internal static string FormatBatterySummary(BatteryDetail battery) =>
+        $"{battery.Name ?? "电池"} · 设计容量：{battery.DesignCapacity ?? "未能读取"}" +
+        $" · 满充容量：{battery.FullChargeCapacity ?? "未能读取"}" +
+        $" · 循环次数：{battery.CycleCount ?? "未能读取"}" +
+        $" · 序列号：{battery.SerialNumber ?? "未能读取"}";
+
+    internal static string FormatWindowsSummary(string? product, string? displayVersion, string? build)
+    {
+        var name = Join(product, string.IsNullOrWhiteSpace(displayVersion) ? null : $"({displayVersion})");
+        return string.IsNullOrWhiteSpace(build) ? name : $"{name} | {build}";
     }
 
     internal static string? DetectCpuBrand(string? cpuName)
@@ -678,6 +744,12 @@ public static class HardwareInfoService
 
     private static string? BuildGpuDisplayText()
     {
+        var devices = BuildGpuDeviceValues();
+        return devices.Count > 0 ? string.Join(GetSeparator(), devices) : null;
+    }
+
+    private static IReadOnlyList<string> BuildGpuDeviceValues()
+    {
         (string name, ulong dedicatedVram, ulong sharedVram)[] dxgiAdapters;
         try { dxgiAdapters = EnumerateDxgiAdapters(); }
         catch { dxgiAdapters = Array.Empty<(string, ulong, ulong)>(); }
@@ -686,7 +758,7 @@ public static class HardwareInfoService
         foreach (var item in Query("Win32_VideoController"))
         {
             var name = Get(item, "Name");
-            if (HardwareDisplayPolicy.IsVirtualAdapter(name))
+            if (string.IsNullOrWhiteSpace(name) || HardwareDisplayPolicy.IsVirtualAdapter(name))
                 continue;
 
             var display = name;
@@ -701,7 +773,7 @@ public static class HardwareInfoService
             parts.Add(display!);
         }
 
-        return parts.Count > 0 ? string.Join(GetSeparator(), parts) : null;
+        return parts;
     }
 
     private static string? DetectNpuName()
@@ -739,6 +811,14 @@ public static class HardwareInfoService
         };
     }
 
+    private static HardwareInfoItem DeviceItem(string label, IEnumerable<string> values)
+    {
+        var devices = values.Where(value => !string.IsNullOrWhiteSpace(value)).ToArray();
+        var item = Item(label, string.Join(GetSeparator(), devices));
+        item.DeviceValues = devices;
+        return item;
+    }
+
     private static long GetTotalPhysicalMemoryBytes()
     {
         try
@@ -753,12 +833,14 @@ public static class HardwareInfoService
         return 0;
     }
 
-    private static string FormatMemory()
+    private static string FormatMemory() => BuildMemorySummary().Value;
+
+    private static HardwareInfoItem BuildMemorySummary()
     {
         var allSlots = Query("Win32_PhysicalMemory").ToList();
         if (allSlots.Count == 0)
         {
-            return "未知";
+            return Item("内存", "未知");
         }
 
         var modules = allSlots.Where(item => ToLong(Get(item, "Capacity")) > 0).ToList();
@@ -771,7 +853,7 @@ public static class HardwareInfoService
 
         if (modules.Count == 0)
         {
-            return $"空插槽 {totalSlots} 个";
+            return Item("内存", $"空插槽 {totalSlots} 个");
         }
 
         var systemTotal = GetTotalPhysicalMemoryBytes();
@@ -803,7 +885,16 @@ public static class HardwareInfoService
         if (speedLabel.Length > 0) parts.Add(speedLabel);
         parts.Add(HardwareDisplayPolicy.FormatMemoryDevices(modules.Count, totalSlots, memType));
 
-        return string.Join(" ", parts);
+        var result = Item("内存", string.Join(" ", parts));
+        // 板载 LPDDR 的逻辑设备并不等于独立内存条，保持一张完整的板载内存卡片。
+        if (modules.Count > 1 && memType is not (27 or 28 or 29 or 30 or 35))
+            result.DeviceValues = modules.Select(module => Join(
+                CleanMemManufacturer(Get(module, "Manufacturer")), Get(module, "PartNumber"),
+                $"{ToLong(Get(module, "Capacity")) / 1024d / 1024d / 1024d:0.#} GB",
+                GetMemoryTypeLabel(ToInt(Get(module, "SMBIOSMemoryType"))),
+                GetMemoryConfiguredClockSpeed(module) > 0 ? $"{GetMemoryConfiguredClockSpeed(module)} MHz" : null,
+                Get(module, "DeviceLocator"))).ToArray();
+        return result;
     }
 
     internal static string GetMemoryTypeLabel(int smbiosMemoryType)
@@ -1015,33 +1106,43 @@ public static class HardwareInfoService
         return JedecVendorRegistry.Get(fullCode);
     }
 
-    private static string FormatDisks()
+    internal static IReadOnlyList<string> BuildDiskDeviceValues(IReadOnlyList<DiskDetail> disks) =>
+        disks.Select(disk => $"{disk.Model}{(string.IsNullOrWhiteSpace(disk.Size) ? "" : $" ({disk.Size})")} · 温度：{FormatDiskTemperature(disk.Temperature)}").ToArray();
+
+    internal static IReadOnlyList<HardwareInfoSection> ApplyDiskDetailSnapshot(
+        IReadOnlyList<HardwareInfoSection> source, IReadOnlyList<DiskDetail> disks)
     {
-        var diskModels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var diskEntries = new List<string>();
-
-        foreach (var item in Query("Win32_DiskDrive"))
+        if (disks.Count == 0) return source;
+        var updated = DeepCopy(source);
+        var diskItem = updated.ElementAtOrDefault(2)?.Items.FirstOrDefault(item => item.Label == "硬盘");
+        if (diskItem is not null)
         {
-            var model = Get(item, "Model");
-            var size = ToLong(Get(item, "Size")) / 1024d / 1024d / 1024d;
-            if (string.IsNullOrWhiteSpace(model)) continue;
-            diskModels.Add(model);
-            diskEntries.Add($"{model} ({size:0.#}GB)");
+            diskItem.DeviceValues = BuildDiskDeviceValues(disks);
+            diskItem.Value = string.Join(GetSeparator(), diskItem.DeviceValues);
         }
-
-        foreach (var item in Query("Win32_PnPEntity"))
-        {
-            if (Get(item, "PNPClass") != "DiskDrive") continue;
-            var name = Get(item, "Name");
-            if (string.IsNullOrWhiteSpace(name) || diskModels.Contains(name)) continue;
-            diskModels.Add(name);
-            diskEntries.Add(name);
-        }
-
-        return diskEntries.Count > 0 ? string.Join(GetSeparator(), diskEntries) : "未知";
+        return updated;
     }
 
-    private static string FormatDisplays()
+    internal static float? FindDiskTemperature(string model, IReadOnlyDictionary<string, float> temperatures)
+    {
+        if (temperatures.TryGetValue(model, out var exact)) return exact;
+        var matches = temperatures.Where(pair => !string.IsNullOrWhiteSpace(pair.Key) &&
+            (pair.Key.Contains(model, StringComparison.OrdinalIgnoreCase) ||
+             model.Contains(pair.Key, StringComparison.OrdinalIgnoreCase))).ToList();
+        return matches.Count == 1 ? matches[0].Value : null;
+    }
+
+    internal static string FormatDiskTemperature(float? temperature) =>
+        IsValidDiskTemperature(temperature)
+            ? $"{temperature:0.#} °C" : "未能读取";
+
+    private static bool IsValidDiskTemperature(float? temperature) =>
+        temperature is { } value && float.IsFinite(value) && value > -40 && value < 150;
+
+    internal static float? ResolveDiskTemperature(float? sensor, int? smart) =>
+        IsValidDiskTemperature(sensor) ? sensor : IsValidDiskTemperature(smart) ? smart : null;
+
+    private static IReadOnlyList<string> BuildDisplayDeviceValues()
     {
         var monitorInfos = GetActiveDisplayInfos();
 
@@ -1066,9 +1167,9 @@ public static class HardwareInfoService
             }
         }
 
-        if (monitorInfos.Count == 0) return "未知";
+        if (monitorInfos.Count == 0) return [];
 
-        return string.Join(GetSeparator(), monitorInfos.Select(mi =>
+        return monitorInfos.Select(mi =>
         {
             if (string.IsNullOrWhiteSpace(mi.Label) && string.IsNullOrWhiteSpace(mi.Resolution))
                 return "";
@@ -1077,14 +1178,15 @@ public static class HardwareInfoService
             var resOrSize = new List<string>();
             if (!string.IsNullOrWhiteSpace(sizeStr)) resOrSize.Add(sizeStr);
             if (!string.IsNullOrWhiteSpace(mi.Resolution)) resOrSize.Add(mi.Resolution);
+            if (!string.IsNullOrWhiteSpace(mi.RefreshRate)) resOrSize.Add(mi.RefreshRate);
             var bracketContent = resOrSize.Count > 0 ? string.Join(" ", resOrSize) : null;
             if (string.IsNullOrWhiteSpace(label)) return bracketContent ?? "";
             if (string.IsNullOrWhiteSpace(bracketContent)) return label;
             return $"{label} [{bracketContent}]";
-        }).Where(s => !string.IsNullOrWhiteSpace(s)));
+        }).Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
     }
 
-    private sealed record DisplayInfo(string Label, string? Resolution, bool IsPrimary, double? DiagonalInches);
+    private sealed record DisplayInfo(string Label, string? Resolution, bool IsPrimary, double? DiagonalInches, string? RefreshRate = null);
 
     private static List<DisplayInfo> GetActiveDisplayInfos()
     {
@@ -1108,7 +1210,7 @@ public static class HardwareInfoService
 
                     if (!string.IsNullOrWhiteSpace(label) || !string.IsNullOrWhiteSpace(resolution))
                     {
-                        results.Add(new DisplayInfo(label, resolution, isPrimary, diagonalInches));
+                        results.Add(new DisplayInfo(label, resolution, isPrimary, diagonalInches, GetCurrentRefreshRate(adapter.DeviceName)));
                     }
                 }
 
@@ -1573,15 +1675,16 @@ public static class HardwareInfoService
         };
     }
 
-    private static string JoinNames(string className, Func<ManagementBaseObject, bool>? filter = null)
+    private static IReadOnlyList<string> DeviceNames(string className, Func<ManagementBaseObject, bool>? filter = null)
     {
         var names = Query(className)
             .Where(item => filter?.Invoke(item) ?? true)
             .Select(item => Get(item, "Name"))
             .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!)
             .Distinct();
 
-        return string.Join(GetSeparator(), names);
+        return names.ToArray();
     }
 
     private static ManagementBaseObject? First(string className)
@@ -1722,7 +1825,7 @@ public static class HardwareInfoService
         var boardTask = Task.Run(() => Safe(BuildMotherboardDetail, new MotherboardDetail()));
         var memoryTask = Task.Run(() => Safe(BuildMemoryDetail, new MemoryDetail()));
         var gpuTask = Task.Run(() => Safe(BuildGpuDetails, []));
-        var diskTask = Task.Run(() => Safe(BuildDiskDetails, []));
+        var diskTask = Task.Run(() => Safe(() => BuildDiskDetails(), new List<DiskDetail>()));
         var displayTask = Task.Run(() => Safe(BuildDisplayDetails, []));
         var soundTask = Task.Run(() => Safe(BuildSoundDetails, []));
         var networkTask = Task.Run(() => Safe(BuildNetworkDetails, []));
@@ -1757,7 +1860,13 @@ public static class HardwareInfoService
             OtherDevices = issueTask.Result,
         };
 
-        _detailCache = data;
+        lock (_lock)
+        {
+            _detailCache = data;
+            // 详情可能在监控引擎就绪后才读到温度；返回概览时不能继续复用早期的「未能读取」。
+            // 替换副本，避免后台采集修改正在显示的行。
+            if (_cache is not null) _cache = ApplyDiskDetailSnapshot(_cache, data.Disks);
+        }
         return data;
     }
 
@@ -2139,7 +2248,7 @@ public static class HardwareInfoService
         return gpus;
     }
 
-    private static List<DiskDetail> BuildDiskDetails()
+    private static List<DiskDetail> BuildDiskDetails(bool includeFullDetails = true)
     {
         var disks = new List<DiskDetail>();
         var seenModels = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -2170,14 +2279,14 @@ public static class HardwareInfoService
                 FirmwareRevision = Get(item, "FirmwareRevision"),
                 SerialNumber = CleanSerial(Get(item, "SerialNumber")),
                 PnpDeviceId = Get(item, "PNPDeviceID"),
-                PartitionStyle = ReadPartitionStyle(index),
+                PartitionStyle = includeFullDetails ? ReadPartitionStyle(index) : null,
                 // NVMe/部分 SSD 不报 NominalMediaRotationRate（0），按介质类型补「固态（无转速）」
                 RotationRate = FormatRotationRate(rotationRate)
                     ?? (string.Equals(diskMediaType, "SSD", StringComparison.OrdinalIgnoreCase) ? "固态（无转速）" : null),
                 Status = MapDeviceStatus(Get(item, "Status"))
             };
 
-            if (!string.IsNullOrWhiteSpace(deviceId))
+            if (includeFullDetails && !string.IsNullOrWhiteSpace(deviceId))
             {
                 try
                 {
@@ -2212,7 +2321,7 @@ public static class HardwareInfoService
         }
 
         EnrichDiskTemperatures(disks);
-        EnrichDiskSmart(disks);
+        EnrichDiskSmart(includeFullDetails ? disks : disks.Where(disk => !IsValidDiskTemperature(disk.Temperature)).ToList());
 
         return disks;
     }
@@ -2231,6 +2340,7 @@ public static class HardwareInfoService
                 var isNvme = ContainsAny(disk.InterfaceType, "NVMe") || ContainsAny(disk.PnpDeviceId, "NVMe");
                 var isSsd = string.Equals(disk.MediaType, "SSD", StringComparison.OrdinalIgnoreCase);
                 var smart = DiskSmartReader.ReadDiskSmart((uint)disk.Index, isNvme, isSsd, disk.Model ?? "", disk.PnpDeviceId ?? "");
+                disk.Temperature = ResolveDiskTemperature(disk.Temperature, smart.TemperatureC);
                 if (!smart.HasSmart) continue;
 
                 disk.SmartHealth = smart.Status switch
@@ -2273,15 +2383,7 @@ public static class HardwareInfoService
             foreach (var disk in disks)
             {
                 if (string.IsNullOrWhiteSpace(disk.Model)) continue;
-                foreach (var kvp in temps)
-                {
-                    if (kvp.Key.Contains(disk.Model, StringComparison.OrdinalIgnoreCase)
-                        || disk.Model.Contains(kvp.Key, StringComparison.OrdinalIgnoreCase))
-                    {
-                        disk.Temperature = kvp.Value;
-                        break;
-                    }
-                }
+                disk.Temperature = FindDiskTemperature(disk.Model, temps);
             }
         }
         catch { }
@@ -2452,7 +2554,7 @@ public static class HardwareInfoService
     private static string? GetCurrentRefreshRate(string displayDeviceName)
     {
         var mode = new DEVMODE { dmSize = (ushort)Marshal.SizeOf<DEVMODE>() };
-        if (!EnumDisplaySettings(displayDeviceName, ENUM_CURRENT_SETTINGS, ref mode) || mode.dmDisplayFrequency == 0)
+        if (!EnumDisplaySettings(displayDeviceName, ENUM_CURRENT_SETTINGS, ref mode) || mode.dmDisplayFrequency <= 1)
             return null;
         return $"{mode.dmDisplayFrequency} Hz";
     }
@@ -2570,12 +2672,8 @@ public static class HardwareInfoService
         var detail = new WindowsDetail();
         var os = First("Win32_OperatingSystem");
 
-        detail.ProductName = CleanProductName(Get(os, "Caption"));
-        var build = Get(os, "BuildNumber");
-        var osBuild = ToInt(build);
-        var ubr = FirstUseful(Get(os, "UBR"), ReadRegistryString(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "UBR"));
-        detail.Build = FormatWindowsBuild(build, ubr);
-        detail.DisplayVersion = ReadRegistryString(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "DisplayVersion");
+        FillWindowsVersion(detail, os);
+        var osBuild = ToInt(Get(os, "BuildNumber"));
         detail.Architecture = Get(os, "OSArchitecture");
         detail.InstallDate = FormatInstallDate(Get(os, "InstallDate"));
         detail.InstallLanguage = MapInstallLanguageCode(FormatLcid(Get(os, "OSLanguage")));
@@ -2721,6 +2819,14 @@ public static class HardwareInfoService
         }
     }
 
+    private static void FillWindowsVersion(WindowsDetail detail, ManagementBaseObject? os)
+    {
+        detail.ProductName = CleanProductName(Get(os, "Caption"));
+        detail.Build = FormatWindowsBuild(Get(os, "BuildNumber"),
+            ReadRegistryString(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "UBR"));
+        detail.DisplayVersion = ReadRegistryString(@"SOFTWARE\Microsoft\Windows NT\CurrentVersion", "DisplayVersion");
+    }
+
     private static BatteryDetail? BuildBatteryDetail()
     {
         var battery = First("Win32_Battery");
@@ -2737,8 +2843,10 @@ public static class HardwareInfoService
         };
 
         // Win32_Battery 的容量字段经常为空，root\WMI 的电池类才是可靠来源。
+        string? instanceName = null;
         foreach (var item in QueryScoped(@"root\WMI", "SELECT * FROM BatteryStaticData", 3))
         {
+            instanceName = Get(item, "InstanceName");
             designed = designed > 0 ? designed : ToLong(Get(item, "DesignedCapacity"));
             detail.Manufacturer ??= Get(item, "ManufactureName");
             detail.SerialNumber ??= CleanSerial(Get(item, "SerialNumber"));
@@ -2748,14 +2856,17 @@ public static class HardwareInfoService
 
         foreach (var item in QueryScoped(@"root\WMI", "SELECT * FROM BatteryFullChargedCapacity", 3))
         {
+            if (instanceName is not null && !string.Equals(instanceName, Get(item, "InstanceName"), StringComparison.OrdinalIgnoreCase)) continue;
             full = full > 0 ? full : ToLong(Get(item, "FullChargedCapacity"));
             break;
         }
 
         foreach (var item in QueryScoped(@"root\WMI", "SELECT * FROM BatteryCycleCount", 3))
         {
-            var cycles = ToLong(Get(item, "CycleCount"));
-            if (cycles > 0) detail.CycleCount = $"{cycles} 次";
+            if (instanceName is not null && !string.Equals(instanceName, Get(item, "InstanceName"), StringComparison.OrdinalIgnoreCase)) continue;
+            var raw = Get(item, "CycleCount");
+            if (uint.TryParse(raw, out var cycles) && cycles != uint.MaxValue)
+                detail.CycleCount = $"{cycles} 次";
             break;
         }
 
@@ -2878,7 +2989,7 @@ public static class HardwareInfoService
 
     private static string? FormatEnergy(long milliWattHours)
     {
-        if (milliWattHours <= 0) return null;
+        if (milliWattHours <= 0 || milliWattHours >= uint.MaxValue) return null;
         return milliWattHours >= 1000 ? $"{milliWattHours / 1000d:0.0} Wh" : $"{milliWattHours} mWh";
     }
 

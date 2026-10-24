@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <root>
   <resheader name="resmimetype">
     <value>text/microsoft-resx</value>
@@ -5120,4 +5120,32 @@ else then stroke=#888888 visible=true
   <data name="Hw_Field_NominalClock" xml:space="preserve"><value>标称频率（固件）</value></data>
   <data name="Hw_Field_SampledClock" xml:space="preserve"><value>当前频率（采样）</value></data>
   <data name="Hw_Field_InferredChannel" xml:space="preserve"><value>通道模式（插槽推测）</value></data>
+  <data name="Builtin_display-tools_Name" xml:space="preserve"><value>屏幕工具</value></data>
+  <data name="Builtin_display-tools_Desc" xml:space="preserve"><value>查看多显示器、EDID、色域覆盖、HDR、颜色配置文件，复制检测报告并进行全屏坏点与色阶测试。</value></data>
+  <data name="Settings_HardwareStyle.Header" xml:space="preserve"><value>硬件信息界面样式</value></data>
+  <data name="Settings_HardwareStyle.Description" xml:space="preserve"><value>选择经典列表或硬件全景；全景以台式机或笔记本示意图标注各部件。默认使用经典样式。</value></data>
+  <data name="Settings_HardwareStyleClassic.Content" xml:space="preserve"><value>经典样式（默认）</value></data>
+  <data name="Settings_HardwareStyleWindows.Content" xml:space="preserve"><value>硬件全景（部件标注）</value></data>
+  <data name="Hw_ModernDetail.Content" xml:space="preserve"><value>详细信息</value></data>
+  <data name="Hw_ModernRefresh.Content" xml:space="preserve"><value>刷新</value></data>
+  <data name="Hw_ModernShare.Content" xml:space="preserve"><value>分享</value></data>
+  <data name="Hw_DiagramHint.Text" xml:space="preserve"><value>拖动旋转 · 点击标注查看参数 · 部件位置为示意</value></data>
+  <data name="Hw_DeviceLaptop" xml:space="preserve"><value>笔记本电脑</value></data>
+  <data name="Hw_DeviceDesktop" xml:space="preserve"><value>台式电脑</value></data>
+  <data name="Hw_CopyParameters" xml:space="preserve"><value>复制参数</value></data>
+  <data name="Hw_ViewParameters" xml:space="preserve"><value>点击查看完整参数</value></data>
+  <data name="Search_SettingHardwareStyle" xml:space="preserve"><value>硬件信息界面样式</value></data>
+  <data name="Search_SettingHardwareStyleDesc" xml:space="preserve"><value>切换经典列表与硬件全景部件标注</value></data>
+  <data name="Hw_ViewMenu.Content" xml:space="preserve"><value>视图</value></data>
+  <data name="Hw_ClassicMode.Text" xml:space="preserve"><value>经典样式</value></data>
+  <data name="Hw_DiagramMode.Text" xml:space="preserve"><value>3D 硬件全景</value></data>
+  <data name="Hw_AutoRotate.Text" xml:space="preserve"><value>自动旋转</value></data>
+  <data name="Hw_ReplayBoot.Text" xml:space="preserve"><value>重播开机</value></data>
+  <data name="Hw_FocusHint" xml:space="preserve"><value>拖动硬件模型旋转 · 点击空白处或按 Esc 返回 · 模型为外观示意</value></data>
+  <data name="Hw_FocusManual" xml:space="preserve"><value>已停止自动旋转 · 拖动继续查看 · 点击空白处返回</value></data>
+  <data name="Hw_FocusBack" xml:space="preserve"><value>返回全景</value></data>
+  <data name="Hw_FocusLoading" xml:space="preserve"><value>正在读取详细参数…</value></data>
+  <data name="Hw_FocusNoDetails" xml:space="preserve"><value>系统未提供更多参数</value></data>
+  <data name="Hw_FocusDetailFailed" xml:space="preserve"><value>详细参数读取失败，可重试</value></data>
+  <data name="Hw_ModelCredit" xml:space="preserve"><value>示意模型：</value></data>
 </root>
