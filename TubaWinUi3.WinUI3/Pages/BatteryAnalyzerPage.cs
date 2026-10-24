@@ -114,7 +114,16 @@ public sealed partial class BatteryAnalyzerPage : Page
         mainStack.Children.Add(BuildDetailsSection());
 
         var header = BuildHeader();
-        var scroller = new ScrollViewer { Content = mainStack };
+        // 与 XAML 工具页同款约束：禁横向滚动，内容钉在 min(视口宽, MaxWidth)，否则无限宽测量会把整列撑出窗口
+        var scroller = new ScrollViewer
+        {
+            Content = mainStack,
+            HorizontalScrollMode = ScrollMode.Disabled,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+            VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+        };
+        ToolViewport.SetConstrainContent(scroller, true);
 
         var root = new Grid();
         root.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });

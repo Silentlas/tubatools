@@ -418,14 +418,6 @@
                                ]
                   },
                   {
-                      "match":  "monitorinfo",
-                      "description":  "Monitor color gamut checker for coverage and panel information.",
-                      "tags":  [
-                                   "Monitor",
-                                   "Color Gamut"
-                               ]
-                  },
-                  {
                       "match":  "UFO",
                       "description":  "UFO Test online refresh rate and motion blur tester.",
                       "tags":  [

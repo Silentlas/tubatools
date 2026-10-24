@@ -357,6 +357,8 @@ public sealed partial class PcTutorialPage : Page
         {
             Content = _contentPanel,
             VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+            HorizontalScrollMode = ScrollMode.Disabled,
+            HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             Padding = new Thickness(0, 8, 0, 20)
         };
 

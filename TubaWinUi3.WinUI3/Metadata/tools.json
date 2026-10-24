@@ -693,18 +693,6 @@
       "version": 1
     },
     {
-      "match": "monitorinfo",
-      "order": 46,
-      "description": "显示器色域检测工具，查看显示器色域覆盖率和面板信息。",
-      "publisher": "",
-      "tags": [
-        "显示器",
-        "色域检测"
-      ],
-      "downloadUrl": "gc:Tools/显示器工具/色域检测",
-      "version": 1
-    },
-    {
       "match": "UFO",
       "order": 47,
       "description": "UFO Test 在线显示器刷新率和运动模糊测试工具。",
